@@ -1,5 +1,5 @@
 const $=id=>document.getElementById(id);
-const fileInput=$('fileInput'),dropzone=$('dropzone'),processBtn=$('processBtn'),clearBtn=$('clearBtn');
+const fileInput=$('fileInput'),dropzone=$('dropzone'),pickBtn=$('pickBtn'),processBtn=$('processBtn'),clearBtn=$('clearBtn');
 const resultsSection=$('resultsSection'),resultList=$('resultList'),downloadAllBtn=$('downloadAllBtn'),summary=$('summary'),statusEl=$('status'),fileSummary=$('fileSummary');
 let files=[],results=[];
 
@@ -10,8 +10,13 @@ const controls=[
 controls.forEach(([a,b,fmt])=>$(a).addEventListener('input',e=>$(b).value=fmt(e.target.value)));
 function setStatus(t){statusEl.textContent=t||''}
 function updateUI(){processBtn.disabled=!files.length;clearBtn.disabled=!files.length&&!results.length;fileSummary.textContent=files.length?`已選擇 ${files.length} 張圖片`:'尚未選取檔案'}
-function addFiles(list){const incoming=[...list].filter(f=>/^image\/(jpeg|png|webp)$/.test(f.type));files=[...files,...incoming];updateUI()}
-fileInput.addEventListener('change',e=>addFiles(e.target.files));
+function isImageFile(f){return /^image\/(jpeg|png|webp)$/.test(f.type)||/\.(jpe?g|png|webp)$/i.test(f.name)}
+function addFiles(list){const incoming=[...list].filter(isImageFile);files=[...files,...incoming];updateUI();if(incoming.length) setStatus(`已選擇 ${files.length} 張圖片`);}
+// iPhone/iPad Safari 對隱藏 input + label 的點擊行為較不穩定，因此改為明確按鈕觸發檔案選擇器。
+pickBtn.addEventListener('click',e=>{e.stopPropagation();fileInput.value='';fileInput.click()});
+dropzone.addEventListener('click',e=>{if(e.target!==pickBtn){fileInput.value='';fileInput.click()}});
+dropzone.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.value='';fileInput.click()}});
+fileInput.addEventListener('change',e=>{addFiles(e.target.files);});
 ['dragenter','dragover'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.add('drag')}));
 ['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev,e=>{e.preventDefault();dropzone.classList.remove('drag')}));
 dropzone.addEventListener('drop',e=>addFiles(e.dataTransfer.files));
@@ -95,8 +100,8 @@ async function processOne(file){
 }
 function makeName(name){const base=name.replace(/\.[^.]+$/,'');const ext=$('format').value==='image/png'?'png':$('format').value==='image/webp'?'webp':'jpg';return`${base}_白底棚拍_V3.${ext}`}
 function downloadBlob(blob,name){const a=document.createElement('a'),url=URL.createObjectURL(blob);a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000)}
-function makeResultItem(r){const item=document.createElement('article');item.className='result-item';const compare=document.createElement('div');compare.className='compare';const before=document.createElement('div');before.className='panel';const after=document.createElement('div');after.className='panel';before.innerHTML="<div class='panel-title'>原圖</div>";after.innerHTML="<div class='panel-title'>V3 商品保真＋智慧去背</div>";const bc=document.createElement('canvas'),ac=document.createElement('canvas');bc.width=r.file._img.naturalWidth;bc.height=r.file._img.naturalHeight;bc.getContext('2d').drawImage(r.file._img,0,0);ac.width=r.canvas.width;ac.height=r.canvas.height;ac.getContext('2d').drawImage(r.canvas,0,0);before.appendChild(bc);after.appendChild(ac);compare.append(before,after);item.appendChild(compare);const meta=document.createElement('div');meta.className='meta';meta.textContent=`${r.file.name}｜輸出 ${r.width} × ${r.height} px｜${(r.blob.size/1024/1024).toFixed(2)} MB`;item.appendChild(meta);const btn=document.createElement('button');btn.className='secondary download-one';btn.textContent='下載此圖片';btn.onclick=()=>downloadBlob(r.blob,makeName(r.file.name));item.appendChild(btn);return item}
+function makeResultItem(r){const item=document.createElement('article');item.className='result-item';const compare=document.createElement('div');compare.className='compare';const before=document.createElement('div');before.className='panel';const after=document.createElement('div');after.className='panel';before.innerHTML="<div class='panel-title'>原圖</div>";after.innerHTML="<div class='panel-title'>V3.1 商品保真＋智慧去背</div>";const bc=document.createElement('canvas'),ac=document.createElement('canvas');bc.width=r.file._img.naturalWidth;bc.height=r.file._img.naturalHeight;bc.getContext('2d').drawImage(r.file._img,0,0);ac.width=r.canvas.width;ac.height=r.canvas.height;ac.getContext('2d').drawImage(r.canvas,0,0);before.appendChild(bc);after.appendChild(ac);compare.append(before,after);item.appendChild(compare);const meta=document.createElement('div');meta.className='meta';meta.textContent=`${r.file.name}｜輸出 ${r.width} × ${r.height} px｜${(r.blob.size/1024/1024).toFixed(2)} MB`;item.appendChild(meta);const btn=document.createElement('button');btn.className='secondary download-one';btn.textContent='下載此圖片';btn.onclick=()=>downloadBlob(r.blob,makeName(r.file.name));item.appendChild(btn);return item}
 
 processBtn.addEventListener('click',async()=>{if(!files.length)return;processBtn.disabled=true;downloadAllBtn.disabled=true;results=[];resultList.innerHTML='';resultsSection.hidden=false;setStatus('正在智慧去背，優先保留商品本體。');let done=0;try{for(const f of files){const r=await processOne(f);results.push(r);done++;resultList.appendChild(makeResultItem(r));summary.textContent=`共 ${results.length} 張｜已完成 ${done}/${files.length} 張`}downloadAllBtn.disabled=false;setStatus('處理完成。請先檢查商品外框、Logo、文字與陰影，再下載。')}catch(err){console.error(err);setStatus('處理失敗：'+err.message)}finally{processBtn.disabled=false;updateUI()}});
-downloadAllBtn.addEventListener('click',async()=>{if(!results.length||typeof JSZip==='undefined'){setStatus('ZIP 模組尚未載入，請稍後再試。');return}downloadAllBtn.disabled=true;setStatus('正在建立 ZIP，請稍候。');const zip=new JSZip();results.forEach(r=>zip.file(makeName(r.file.name),r.blob));const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,'商品白底棚拍_V3_全部.zip');downloadAllBtn.disabled=false;setStatus('ZIP 已開始下載。')});
+downloadAllBtn.addEventListener('click',async()=>{if(!results.length||typeof JSZip==='undefined'){setStatus('ZIP 模組尚未載入，請稍後再試。');return}downloadAllBtn.disabled=true;setStatus('正在建立 ZIP，請稍候。');const zip=new JSZip();results.forEach(r=>zip.file(makeName(r.file.name),r.blob));const blob=await zip.generateAsync({type:'blob'});downloadBlob(blob,'商品白底棚拍_V3.1_全部.zip');downloadAllBtn.disabled=false;setStatus('ZIP 已開始下載。')});
 updateUI();

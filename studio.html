@@ -4,8 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#f4f5f7">
-<meta name="description" content="商品白底棚拍工具 V3｜商品保真＋智慧去背版">
-<title>商品白底棚拍工具 V3｜商品保真＋智慧去背版</title>
+<title>商品白底棚拍工具 V3.1｜商品保真＋智慧去背版</title>
 <link rel="stylesheet" href="studio.css">
 </head>
 <body>
@@ -14,31 +13,22 @@
   <div class="brand">電商商品圖片工具</div>
   <h1>商品白底棚拍工具</h1>
   <p>商品保真去背 × 純白背景 × 自然陰影</p>
-  <span class="version">V3｜商品保真＋智慧去背版</span>
-  <p class="subnote">優先保留商品本體、Logo、文字與外框，再移除邊緣連通背景</p>
+  <span class="version">V3.1｜商品保真＋智慧去背版</span>
 </header>
 
-<section class="card">
-  <label class="dropzone" id="dropzone" for="fileInput">
-    <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-    <div class="drop-icon">＋</div>
-    <strong>拖曳商品照片到這裡</strong>
-    <span>或點擊選擇圖片，可一次選擇多張</span>
+<section class="card upload-card">
+  <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="選擇商品照片">
+    <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp,image/*" multiple>
+    <button type="button" id="pickBtn" class="pick-btn">＋</button>
+    <strong>選擇商品照片</strong>
+    <span>點擊這裡選擇圖片，可一次選擇多張</span>
     <small>JPG / PNG / WebP</small>
-  </label>
+  </div>
   <div id="fileSummary" class="file-summary">尚未選取檔案</div>
 </section>
 
 <section class="card">
-  <div class="section-title">
-    <h2>智慧去背設定</h2>
-    <p>V3 不重新生成商品，使用原始像素做遮罩與合成。</p>
-  </div>
-  <div class="info">
-    <strong>商品保真優先</strong>
-    <span>背景從畫面邊緣開始判斷。遇到白色外盒、細線或 Logo 時，優先保留商品；即使背景無法完全判斷，也寧可少去一點背景。</span>
-  </div>
-
+  <div class="section-title"><h2>智慧去背</h2><p>保留商品原始像素，只處理背景與陰影。</p></div>
   <div class="settings">
     <div class="field wide">
       <label for="mode">去背模式</label>
@@ -47,37 +37,28 @@
         <option value="balanced">標準智慧｜背景較複雜時</option>
         <option value="strong">強力去背｜背景較深、對比高</option>
       </select>
-      <small>如果商品是白色外盒，先使用「保真保守」。</small>
     </div>
-
     <div class="field">
       <label for="bgTolerance">背景相似度</label>
       <div class="range-row"><input id="bgTolerance" type="range" min="8" max="55" value="24"><output id="bgToleranceOut">24</output></div>
-      <small>越低越保守，避免白色商品被吃掉。</small>
     </div>
-
     <div class="field">
       <label for="edgeBarrier">邊界保護</label>
       <div class="range-row"><input id="edgeBarrier" type="range" min="8" max="60" value="28"><output id="edgeBarrierOut">28</output></div>
-      <small>越高越不容易穿過商品外框。</small>
     </div>
-
     <div class="field">
       <label for="edgeProtect">外框保護</label>
       <div class="range-row"><input id="edgeProtect" type="range" min="0" max="8" value="3"><output id="edgeProtectOut">3 px</output></div>
-      <small>補回外框附近的保護區。</small>
     </div>
-
     <div class="field">
       <label for="feather">邊緣柔化</label>
       <div class="range-row"><input id="feather" type="range" min="0" max="2" value="0.5" step="0.5"><output id="featherOut">0.5 px</output></div>
-      <small>建議 0–1 px，避免白邊過度柔化。</small>
     </div>
   </div>
 </section>
 
 <section class="card">
-  <div class="section-title"><h2>商品位置與陰影</h2><p>陰影獨立重新建立，不使用原始灰色背景。</p></div>
+  <div class="section-title"><h2>商品位置與陰影</h2></div>
   <div class="settings">
     <div class="field">
       <label for="canvasRatio">商品佔畫布比例</label>
@@ -101,7 +82,6 @@
     </div>
     <div class="field checkbox-field">
       <label><input id="addShadow" type="checkbox" checked> 加入自然柔和陰影</label>
-      <small>陰影只由商品遮罩建立，不保留原照片的灰色地面。</small>
     </div>
   </div>
 </section>
@@ -111,27 +91,15 @@
   <div class="settings">
     <div class="field">
       <label for="size">輸出尺寸</label>
-      <select id="size">
-        <option value="1000">1000 × 1000 px</option>
-        <option value="1500">1500 × 1500 px</option>
-        <option value="2000">2000 × 2000 px</option>
-        <option value="original">依原圖比例，最短邊 1000 px</option>
-      </select>
+      <select id="size"><option value="1000">1000 × 1000 px</option><option value="1500">1500 × 1500 px</option><option value="2000">2000 × 2000 px</option><option value="original">依原圖比例，最短邊 1000 px</option></select>
     </div>
     <div class="field">
       <label for="format">輸出格式</label>
-      <select id="format">
-        <option value="image/jpeg">JPG 95%</option>
-        <option value="image/png">PNG</option>
-        <option value="image/webp">WebP 95%</option>
-      </select>
+      <select id="format"><option value="image/jpeg">JPG 95%</option><option value="image/png">PNG</option><option value="image/webp">WebP 95%</option></select>
     </div>
     <div class="field">
       <label for="background">背景</label>
-      <select id="background">
-        <option value="#ffffff">純白</option>
-        <option value="#fafafa">極淺灰白</option>
-      </select>
+      <select id="background"><option value="#ffffff">純白</option><option value="#fafafa">極淺灰白</option></select>
     </div>
   </div>
   <div class="actions">
@@ -142,26 +110,11 @@
 </section>
 
 <section class="card results" id="resultsSection" hidden>
-  <div class="result-head">
-    <div><h2>處理結果</h2><p id="summary">共 0 張</p></div>
-    <button id="downloadAllBtn" class="primary small" disabled>下載全部 ZIP</button>
-  </div>
+  <div class="result-head"><div><h2>處理結果</h2><p id="summary">共 0 張</p></div><button id="downloadAllBtn" class="primary small" disabled>下載全部 ZIP</button></div>
   <div id="resultList"></div>
 </section>
 
-<section class="card note">
-  <h2>V3 改進重點</h2>
-  <ul>
-    <li>不重新生成商品，Logo、文字、顏色與比例以原圖像素為基礎。</li>
-    <li>用「邊緣連通背景＋邊界保護」取代單純顏色去背，降低白色外盒被吃掉的機率。</li>
-    <li>商品內部白色區域不會因為與背景相似就直接移除。</li>
-    <li>原始灰色地面不直接當成輸出陰影，改用商品輪廓重新建立柔和陰影。</li>
-    <li>提供保真保守、標準智慧、強力去背三種模式。</li>
-  </ul>
-  <p class="warning">建議先用「保真保守」測試白色外盒。如果商品外框仍有背景殘留，再提高背景相似度或切換標準智慧；不要一開始使用強力去背。</p>
-</section>
-
-<footer>本工具為獨立開發的第三方圖片處理工具，與任何電商平台無隸屬、合作或授權關係。</footer>
+<footer>獨立圖片處理工具</footer>
 </main>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="studio.js"></script>
