@@ -4,18 +4,28 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f6f8">
-  <title>酷澎圖片尺寸檢查＋自動調整工具 V3</title>
+  <meta name="description" content="電商商品圖片尺寸檢查、等比例調整與批次下載工具">
+  <title>電商商品圖片工具｜尺寸檢查與自動調整</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="container">
     <header class="hero">
-      <h1>酷澎圖片尺寸檢查工具</h1>
-      <p>依原始比例等比例調整，並批次打包下載</p>
-      <span class="version">V3｜ZIP 批次下載版</span>
+      <div class="brand">電商商品圖片工具</div>
+      <h1>商品圖片尺寸工具</h1>
+      <p>尺寸檢查、等比例調整與批次下載</p>
+      <span class="version">V4｜尺寸檢查＋自動調整</span>
     </header>
 
     <section class="card">
+      <div class="tool-title">
+        <span class="tool-number">①</span>
+        <div>
+          <h2>商品圖片尺寸工具</h2>
+          <p>依原始比例自動調整，不裁切、不變形</p>
+        </div>
+      </div>
+
       <label class="dropzone" id="dropzone" for="fileInput">
         <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
         <div class="drop-icon">＋</div>
@@ -28,14 +38,17 @@
           <label for="minSize">最小單邊尺寸</label>
           <div class="input-unit"><input id="minSize" type="number" min="1" value="1000"><span>px</span></div>
         </div>
+
         <div class="field">
           <label for="maxSize">最大單邊尺寸</label>
           <div class="input-unit"><input id="maxSize" type="number" min="1" value="10000"><span>px</span></div>
         </div>
+
         <div class="field">
           <label for="maxMB">最大檔案大小</label>
           <div class="input-unit"><input id="maxMB" type="number" min="0.1" step="0.1" value="50"><span>MB</span></div>
         </div>
+
         <div class="field">
           <label for="format">輸出格式</label>
           <select id="format">
@@ -45,6 +58,7 @@
             <option value="image/webp">WebP</option>
           </select>
         </div>
+
         <div class="field full">
           <label for="quality">JPG / WebP 品質</label>
           <div class="input-unit"><input id="quality" type="number" min="1" max="100" value="95"><span>%</span></div>
@@ -56,7 +70,10 @@
         <button id="clearBtn" class="secondary" disabled>清除</button>
       </div>
 
-      <p class="hint">規則：短邊低於最小值會等比例放大；超過最大值會等比例縮小。若兩個限制無法同時滿足，會標示為「需人工處理」，不會自動裁切。</p>
+      <p class="hint">
+        規則：短邊低於最小值會等比例放大；超過最大值會等比例縮小。
+        若兩個限制無法同時滿足，會標示為「需人工處理」，不會自動裁切。
+      </p>
     </section>
 
     <section class="card results" id="resultsSection" hidden>
@@ -77,9 +94,31 @@
         <li>確認最小、最大尺寸與輸出格式。</li>
         <li>按「開始檢查」。</li>
         <li>可逐張下載，或按「下載全部（ZIP）」一次打包。</li>
-        <li>ZIP 下載後可在 iPhone「檔案」App 中找到並解壓縮。</li>
+        <li>ZIP 下載後可在手機或電腦的檔案管理工具中解壓縮。</li>
       </ol>
     </section>
+
+    <section class="card future">
+      <h2>電商商品圖片工具</h2>
+      <div class="future-item">
+        <span>①</span>
+        <div>
+          <strong>商品圖片尺寸工具</strong>
+          <p>目前已提供：尺寸檢查、等比例放大／縮小、批次處理與 ZIP 下載。</p>
+        </div>
+      </div>
+      <div class="future-item disabled">
+        <span>②</span>
+        <div>
+          <strong>商品白底棚拍工具</strong>
+          <p>商品去背、白底、自然陰影、商品置中等功能，後續可獨立加入。</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      本工具為獨立開發的第三方圖片處理工具，與任何電商平台無隸屬、合作或授權關係。
+    </footer>
   </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
