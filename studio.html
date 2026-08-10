@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f7f8fa">
-<title>商品白底棚拍工具 V6｜矩形商品保真版</title>
+<meta name="theme-color" content="#f5f6f8">
+<title>商品白底棚拍工具 V7｜智慧輪廓＋商品保真版</title>
 <link rel="stylesheet" href="studio.css">
 </head>
 <body>
 <header class="hero">
   <div class="eyebrow">電商商品圖片工具</div>
   <h1>商品白底棚拍工具</h1>
-  <p>商品輪廓保留 × 純白背景 × 自然陰影</p>
-  <div class="badge">V6｜矩形商品保真版</div>
-  <div class="sub">優先保留完整商品外框，不重新生成商品內容</div>
+  <p>智慧去背 × 商品保真 × 純白背景 × 自然陰影</p>
+  <div class="badge">V7｜智慧輪廓＋商品保真版</div>
+  <div class="sub">這一版真正移除原始背景，只保留商品本體</div>
 </header>
 
 <main class="container">
@@ -30,18 +30,17 @@
 
   <section class="card">
     <h2>商品保真設定</h2>
-    <p class="muted">V6 採「先找完整商品外框，再處理外部背景」的保守方式，避免白色盒面、Logo、文字與細線被誤刪。</p>
 
     <div class="setting">
-      <div class="setting-title"><span>輪廓保守程度</span><b id="conservativeValue">高</b></div>
-      <input id="conservative" type="range" min="1" max="3" value="3">
-      <div class="hint">高：優先保留商品邊緣，適合白色商品外盒</div>
+      <div class="setting-title"><span>背景辨識</span><b id="tolValue">保守</b></div>
+      <input id="tolerance" type="range" min="1" max="3" value="1">
+      <div class="hint">保守：優先保護白色商品、Logo、文字與外框。建議先用此設定。</div>
     </div>
 
     <div class="setting">
-      <div class="setting-title"><span>商品四周留白</span><b id="marginValue">6%</b></div>
-      <input id="margin" type="range" min="2" max="12" value="6">
-      <div class="hint">保留商品外框周圍的安全範圍</div>
+      <div class="setting-title"><span>輪廓保護</span><b id="protectValue">4 px</b></div>
+      <input id="protect" type="range" min="1" max="8" value="4">
+      <div class="hint">數值越高，越不容易吃掉商品邊緣。</div>
     </div>
 
     <label class="check"><input id="shadow" type="checkbox" checked><span>加入自然接觸陰影</span></label>
@@ -65,8 +64,9 @@
 
     <button class="primary" id="processBtn" disabled>開始製作白底棚拍圖</button>
     <button class="secondary" id="zipBtn" disabled>下載全部 ZIP</button>
+
     <div class="progress-wrap hidden" id="progressWrap">
-      <div class="progress-label"><span id="progressText">處理中</span><span id="progressPct">0%</span></div>
+      <div class="progress-label"><span id="progressText">準備中</span><span id="progressPct">0%</span></div>
       <div class="progress"><i id="progressBar"></i></div>
     </div>
     <div class="error" id="error"></div>
@@ -77,7 +77,6 @@
     <div id="results"><div class="empty">尚無處理結果</div></div>
   </section>
 </main>
-
 <script src="studio.js"></script>
 </body>
 </html>
