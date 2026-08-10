@@ -2,34 +2,56 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>酷澎圖片尺寸調整工具</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f6f8">
+  <title>酷澎圖片尺寸檢查＋自動調整工具</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app">
     <header>
-      <h1>酷澎圖片尺寸調整工具</h1>
-      <p>依原始比例等比例放大，讓圖片單邊至少達到 1000 px。</p>
+      <div class="badge">COUPANG IMAGE TOOL</div>
+      <h1>酷澎圖片尺寸檢查＋自動調整工具</h1>
+      <p>批次檢查圖片尺寸、格式與檔案大小，並可依原比例自動調整。</p>
     </header>
 
     <section class="card">
       <label class="dropzone" id="dropzone">
         <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="drop-icon">＋</div>
         <div class="drop-title">拖曳圖片到這裡</div>
         <div class="drop-subtitle">或點擊選擇圖片，可一次選多張</div>
+        <div class="drop-hint">支援 JPG、PNG、WebP</div>
       </label>
 
+      <div id="fileSummary" class="file-summary" hidden></div>
+
       <div class="settings">
-        <div>
-          <label for="minSide">最小單邊尺寸</label>
+        <div class="setting">
+          <label for="minSide">最小單邊</label>
           <div class="input-row">
-            <input id="minSide" type="number" min="1" max="10000" value="1000">
+            <input id="minSide" type="number" min="1" max="30000" value="1000">
             <span>px</span>
           </div>
         </div>
 
-        <div>
+        <div class="setting">
+          <label for="maxSide">最大單邊</label>
+          <div class="input-row">
+            <input id="maxSide" type="number" min="1" max="30000" value="10000">
+            <span>px</span>
+          </div>
+        </div>
+
+        <div class="setting">
+          <label for="maxFileMB">最大檔案大小</label>
+          <div class="input-row">
+            <input id="maxFileMB" type="number" min="1" max="500" value="50">
+            <span>MB</span>
+          </div>
+        </div>
+
+        <div class="setting">
           <label for="format">輸出格式</label>
           <select id="format">
             <option value="image/jpeg">JPG</option>
@@ -38,7 +60,7 @@
           </select>
         </div>
 
-        <div>
+        <div class="setting">
           <label for="quality">JPG / WebP 品質</label>
           <div class="input-row">
             <input id="quality" type="number" min="50" max="100" value="95">
@@ -47,33 +69,49 @@
         </div>
       </div>
 
+      <div class="rule-box">
+        <div class="rule-title">目前檢查規則</div>
+        <div class="rule-grid">
+          <div><span>尺寸</span><strong id="ruleSize">1000～10000 px</strong></div>
+          <div><span>格式</span><strong>JPG / PNG / WebP</strong></div>
+          <div><span>檔案大小</span><strong id="ruleFile">≤ 50 MB</strong></div>
+          <div><span>比例</span><strong>保持原比例</strong></div>
+        </div>
+      </div>
+
       <div class="notice">
-        <strong>等比例放大規則</strong>
+        <strong>自動調整邏輯</strong>
         <ul>
-          <li>短邊小於設定值：自動等比例放大至設定值。</li>
-          <li>短邊已達設定值以上：不縮小，維持原尺寸。</li>
-          <li>長寬比例不變，不會拉伸變形。</li>
-          <li>例如 720 × 340 px → 約 2118 × 1000 px。</li>
-          <li>例如 800 × 1200 px → 1000 × 1500 px。</li>
+          <li>短邊低於最小值：等比例放大。</li>
+          <li>長邊高於最大值：等比例縮小。</li>
+          <li>如果只靠等比例縮放無法同時符合上下限，會標示「需裁切」，不會擅自裁切商品。</li>
+          <li>原本已符合尺寸的圖片不會被放大或縮小。</li>
+          <li>這個工具只能檢查技術規格，無法判斷白底、商品占比、圖片內容或著作權等內容規範。</li>
         </ul>
       </div>
 
       <div class="actions">
-        <button id="processBtn" disabled>開始調整</button>
+        <button id="checkBtn" disabled>先檢查圖片</button>
+        <button id="adjustBtn" disabled>自動調整合格圖片</button>
         <button id="clearBtn" class="secondary">清除</button>
       </div>
     </section>
 
     <section class="card" id="resultsCard" hidden>
       <div class="result-head">
-        <h2>處理結果</h2>
-        <button id="downloadAllBtn">下載全部</button>
+        <div>
+          <h2>檢查結果</h2>
+          <div id="resultSummary" class="result-summary"></div>
+        </div>
+        <button id="downloadAllBtn" class="secondary">下載全部</button>
       </div>
       <div id="results"></div>
     </section>
 
     <footer>
-      圖片在瀏覽器本機處理，不需要上傳到伺服器。
+      圖片在瀏覽器本機處理，不會上傳到伺服器。
+      <br>
+      酷澎官方公開指南對主圖另有白底、正方形等內容要求，技術尺寸規則請以你目前使用的賣家後台規範為準。
     </footer>
   </main>
   <script src="app.js"></script>
