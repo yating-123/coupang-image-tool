@@ -1,201 +1,174 @@
-const $ = id => document.getElementById(id);
-const fileInput=$("fileInput"), pickBtn=$("pickBtn"), fileStatus=$("fileStatus");
-const processBtn=$("processBtn"), zipBtn=$("zipBtn"), resultsEl=$("results"), statusEl=$("status");
-const filesState=[];
-
-let JSZipReady=null;
-
-function fmtBytes(n){if(n<1024)return n+" B";if(n<1048576)return (n/1024).toFixed(0)+" KB";return (n/1048576).toFixed(2)+" MB"}
+const $=id=>document.getElementById(id);
+const fileInput=$("fileInput"),pickBtn=$("pickBtn"),fileStatus=$("fileStatus");
+const processBtn=$("processBtn"),zipBtn=$("zipBtn"),resultsEl=$("results"),statusEl=$("status");
+let filesState=[],outputs=[],JSZipPromise=null;
 
 pickBtn.addEventListener("click",()=>fileInput.click());
 fileInput.addEventListener("change",()=>{
-  filesState.length=0;
-  [...fileInput.files].forEach(f=>filesState.push(f));
-  updateFileStatus();
+  filesState=[...fileInput.files];
+  fileStatus.textContent=filesState.length?`已選擇 ${filesState.length} 張圖片`:"尚未選取檔案";
+  processBtn.disabled=!filesState.length;
 });
-function updateFileStatus(){
-  if(!filesState.length){
-    fileStatus.textContent="尚未選取檔案";
-    processBtn.disabled=true;
-    return;
-  }
-  fileStatus.textContent=`已選擇 ${filesState.length} 張圖片`;
-  processBtn.disabled=false;
-}
-
-["bgThreshold","protect","shadow"].forEach(id=>{
-  $(id).addEventListener("input",()=>{
-    $(id+"Out").textContent=id==="protect"?$(id).value+" px":$(id).value+(id==="shadow"?"%":"");
-  });
+$("edge").addEventListener("input",e=>{
+  $("edgeOut").textContent=["","低","中","高"][+e.target.value];
 });
+$("margin").addEventListener("input",e=>$("marginOut").textContent=e.target.value+" px");
 
-function loadImage(file){
-  return new Promise((resolve,reject)=>{
-    const img=new Image(), url=URL.createObjectURL(file);
-    img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
-    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("圖片讀取失敗"))};
-    img.src=url;
-  });
-}
+function loadImage(file){return new Promise((res,rej)=>{
+  const img=new Image(),u=URL.createObjectURL(file);
+  img.onload=()=>{URL.revokeObjectURL(u);res(img)};img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("圖片讀取失敗"))};img.src=u;
+})}
+function rgb(d,i){return[d[i],d[i+1],d[i+2]]}
+function dist(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])}
+function median(a,k){let v=a.map(x=>x[k]).sort((x,y)=>x-y);return v[Math.floor(v.length/2)]}
+function medianRGB(a){return[median(a,0),median(a,1),median(a,2)]}
 
 /*
-  V4 核心：
-  1. 不用 AI 重繪。
-  2. 從四周邊界做背景 flood-fill。
-  3. 背景顏色以四角/邊緣採樣建立，避免把商品內部白色區域直接判成背景。
-  4. 以邊緣保護帶保留商品外框與細線。
+ V5:
+ - 先找「與四周背景相連」的區域，而不是刪除整張圖中相似顏色。
+ - 再找背景/商品的轉換帶，建立安全邊界。
+ - 商品核心區域永遠保留原像素。
+ - 背景只在商品輪廓外側變成純白。
 */
-function removeConnectedBackground(ctx,w,h,threshold,protectPx){
-  const src=ctx.getImageData(0,0,w,h), d=src.data;
-  const n=w*h, bg=new Uint8Array(n), seen=new Uint8Array(n);
-  const samples=[];
-  const step=Math.max(1,Math.floor(Math.min(w,h)/80));
-  for(let x=0;x<w;x+=step){samples.push(getRGB(d,(0*w+x)*4));samples.push(getRGB(d,((h-1)*w+x)*4))}
-  for(let y=0;y<h;y+=step){samples.push(getRGB(d,(y*w)*4));samples.push(getRGB(d,(y*w+w-1)*4))}
+function makeMask(ctx,w,h,level,protect){
+  const im=ctx.getImageData(0,0,w,h),d=im.data,n=w*h;
+  const step=Math.max(1,Math.floor(Math.min(w,h)/90)), samples=[];
+  for(let x=0;x<w;x+=step){samples.push(rgb(d,x*4));samples.push(rgb(d,((h-1)*w+x)*4))}
+  for(let y=0;y<h;y+=step){samples.push(rgb(d,(y*w)*4));samples.push(rgb(d,(y*w+w-1)*4))}
   const ref=medianRGB(samples);
-  const q=new Int32Array(n); let head=0,tail=0;
-  const push=(idx)=>{if(!seen[idx]){seen[idx]=1;q[tail++]=idx}};
+  const threshold=level===1?16:level===3?34:25;
+  const bg=new Uint8Array(n),seen=new Uint8Array(n),q=new Int32Array(n*0.15+1000);
+  let head=0,tail=0;
+  const queue=[];
+  const push=i=>{if(!seen[i]){seen[i]=1;queue.push(i)}};
   for(let x=0;x<w;x++){push(x);push((h-1)*w+x)}
   for(let y=0;y<h;y++){push(y*w);push(y*w+w-1)}
   const dirs=[1,-1,w,-w];
-  while(head<tail){
-    const idx=q[head++], x=idx%w,y=(idx/w)|0;
-    const c=getRGB(d,idx*4);
-    if(colorDist(c,ref)<=threshold){
-      bg[idx]=1;
+  while(head<queue.length){
+    const i=queue[head++],x=i%w;
+    if(dist(rgb(d,i*4),ref)<=threshold){
+      bg[i]=1;
       for(const dd of dirs){
-        const ni=idx+dd;
-        if(ni<0||ni>=n)continue;
-        const nx=ni%w;
-        if((dd===1||dd===-1)&&Math.abs(nx-x)!==1)continue;
+        const ni=i+dd;if(ni<0||ni>=n)continue;
+        const nx=ni%w;if((dd===1||dd===-1)&&Math.abs(nx-x)!==1)continue;
         if(!seen[ni])push(ni);
       }
     }
   }
-
-  // Edge protection: any pixel near a transition between background and non-background is protected.
-  const protect=Math.max(1,protectPx|0);
-  const protectedMask=new Uint8Array(n);
+  // Transition protection: keep a wider ring around detected object.
+  const keep=new Uint8Array(n), r=protect;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const i=y*w+x;
-    if(!bg[i])continue;
+    const i=y*w+x;if(!bg[i])continue;
     let near=false;
-    for(let dy=-protect;dy<=protect&&!near;dy++)for(let dx=-protect;dx<=protect;dx++){
-      if(Math.abs(dx)+Math.abs(dy)>protect)continue;
+    outer:for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
+      if(Math.abs(dx)+Math.abs(dy)>r)continue;
       const nx=x+dx,ny=y+dy;
-      if(nx<0||nx>=w||ny<0||ny>=h)continue;
-      if(!bg[ny*w+nx]){near=true;break}
+      if(nx>=0&&nx<w&&ny>=0&&ny<h&&!bg[ny*w+nx]){near=true;break outer}
     }
-    if(near)protectedMask[i]=1;
+    if(near)keep[i]=1;
   }
+  return {d,bg,keep,w,h};
+}
 
-  const out=ctx.createImageData(w,h);
-  const od=out.data;
-  for(let i=0;i<n;i++){
-    const si=i*4;
-    od[si]=255;od[si+1]=255;od[si+2]=255;
-    // Only connected border background becomes white.
-    // Protected transition pixels retain their original color.
-    if(!bg[i] || protectedMask[i]){
-      od[si]=d[si];od[si+1]=d[si+1];od[si+2]=d[si+2];od[si+3]=d[si+3];
-    }else{
-      od[si+3]=255;
-    }
+function findObjectBounds(mask){
+  let minX=mask.w,minY=mask.h,maxX=-1,maxY=-1;
+  for(let y=0;y<mask.h;y++)for(let x=0;x<mask.w;x++){
+    const i=y*mask.w+x;
+    if(!mask.bg[i]||mask.keep[i]){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}
   }
-  ctx.putImageData(out,0,0);
+  if(maxX<0)return{x:0,y:0,w:mask.w,h:mask.h};
+  // Trim only obvious outer margin; keep a small safety border.
+  const pad=Math.max(4,Math.round(Math.min(mask.w,mask.h)*.006));
+  minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(mask.w-1,maxX+pad);maxY=Math.min(mask.h-1,maxY+pad);
+  return{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1};
 }
 
-function getRGB(d,i){return [d[i],d[i+1],d[i+2]]}
-function medianRGB(arr){
-  const a=[...arr]; const m=k=>{const v=a.map(x=>x[k]).sort((p,q)=>p-q);return v[Math.floor(v.length/2)]};
-  return [m(0),m(1),m(2)];
-}
-function colorDist(a,b){return Math.sqrt((a[0]-b[0])**2+(a[1]-b[1])**2+(a[2]-b[2])**2)}
+function renderWhite(img){
+  const target=$("size").value;
+  const src=document.createElement("canvas");
+  src.width=img.naturalWidth;src.height=img.naturalHeight;
+  const sc=src.getContext("2d",{willReadFrequently:true});sc.drawImage(img,0,0);
+  const level=+$("edge").value, protect=+$("margin").value;
+  const mask=makeMask(sc,src.width,src.height,level,protect);
+  const b=findObjectBounds(mask);
 
-function makeCanvas(img){
-  const sizeSel=$("size").value;
-  const maxSide=sizeSel==="original"?Math.max(img.naturalWidth,img.naturalHeight):+sizeSel;
-  const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
-  const iw=Math.max(1,Math.round(img.naturalWidth*scale)), ih=Math.max(1,Math.round(img.naturalHeight*scale));
-  const s=Math.max(iw,ih);
-  const canvas=document.createElement("canvas");canvas.width=s;canvas.height=s;
-  const c=canvas.getContext("2d",{willReadFrequently:true});
-  c.fillStyle="#fff";c.fillRect(0,0,s,s);
-  const x=(s-iw)/2,y=(s-ih)/2;
-  c.drawImage(img,x,y,iw,ih);
-  return {canvas,c,x,y,iw,ih,s};
-}
-
-function addContactShadow(canvas,boxX,boxY,boxW,boxH,opacity){
-  if(!opacity)return;
+  const outSize=target==="original"?Math.max(b.w,b.h):+target;
+  const canvas=document.createElement("canvas");canvas.width=outSize;canvas.height=outSize;
   const c=canvas.getContext("2d");
-  const cx=boxX+boxW/2, cy=boxY+boxH-2;
-  const g=c.createRadialGradient(cx,cy,2,cx,cy,Math.max(boxW*.42,20));
-  g.addColorStop(0,`rgba(0,0,0,${Math.min(.20,opacity/100*1.6)})`);
-  g.addColorStop(.45,`rgba(0,0,0,${Math.min(.07,opacity/100*.55)})`);
-  g.addColorStop(1,"rgba(0,0,0,0)");
-  c.save();c.fillStyle=g;c.fillRect(cx-Math.max(boxW*.48,30),cy-18,Math.max(boxW*.96,60),45);c.restore();
-}
+  c.fillStyle="#fff";c.fillRect(0,0,outSize,outSize);
 
-async function processOne(file,index){
-  const img=await loadImage(file);
-  const {canvas,c,x,y,iw,ih,s}=makeCanvas(img);
-  const threshold=+$("bgThreshold").value;
-  const protect=+$("protect").value;
-  removeConnectedBackground(c,s,s,threshold,protect);
-  if($("addShadow").checked)addContactShadow(canvas,x,y,iw,ih,+$("shadow").value);
-  const format=$("format").value;
-  const mime=format==="png"?"image/png":format==="webp"?"image/webp":"image/jpeg";
-  const quality=format==="png"?undefined:(format==="webp"?0.95:0.95);
-  const blob=await new Promise(r=>canvas.toBlob(r,mime,quality));
-  const ext=format==="png"?"png":format;
-  const base=file.name.replace(/\.[^.]+$/,"");
-  const outName=`${base}_白底棚拍V4.${ext}`;
-  return {file,blob,outName,url:URL.createObjectURL(blob),w:s,h:s};
-}
+  const pad=Math.round(outSize*.10);
+  const fit=Math.min((outSize-pad*2)/b.w,(outSize-pad*2)/b.h);
+  const dw=Math.max(1,Math.round(b.w*fit)),dh=Math.max(1,Math.round(b.h*fit));
+  const dx=Math.round((outSize-dw)/2),dy=Math.round((outSize-dh)/2);
 
-processBtn.addEventListener("click",async()=>{
-  if(!filesState.length)return;
-  processBtn.disabled=true;zipBtn.disabled=true;resultsEl.innerHTML="";statusEl.textContent="製作中，請稍候";
-  const outputs=[];
-  try{
-    for(let i=0;i<filesState.length;i++){
-      statusEl.textContent=`正在處理 ${i+1} / ${filesState.length}`;
-      const r=await processOne(filesState[i],i);outputs.push(r);
-      renderResult(r);
+  // Build object layer. Background-connected pixels become white; object and transition ring retain source.
+  const objectCanvas=document.createElement("canvas");objectCanvas.width=src.width;objectCanvas.height=src.height;
+  const oc=objectCanvas.getContext("2d");
+  oc.fillStyle="#fff";oc.fillRect(0,0,src.width,src.height);
+  const od=oc.createImageData(src.width,src.height);
+  for(let i=0;i<mask.w*mask.h;i++){
+    const j=i*4;
+    if(!mask.bg[i]||mask.keep[i]){
+      od.data[j]=mask.d[j];od.data[j+1]=mask.d[j+1];od.data[j+2]=mask.d[j+2];od.data[j+3]=255;
+    }else{
+      od.data[j]=255;od.data[j+1]=255;od.data[j+2]=255;od.data[j+3]=255;
     }
-    window.__outputs=outputs;
-    zipBtn.disabled=!outputs.length;
-    statusEl.textContent=`完成，共 ${outputs.length} 張`;
-  }catch(e){
-    statusEl.textContent="處理失敗："+e.message;
-  }finally{processBtn.disabled=false}
-});
+  }
+  oc.putImageData(od,0,0);
 
-function renderResult(r){
+  // Soft contact shadow goes behind the object.
+  if($("shadow").checked){
+    c.save();
+    const sx=dx+dw*.5, sy=dy+dh-2;
+    const g=c.createRadialGradient(sx,sy,2,sx,sy,Math.max(dw*.42,25));
+    g.addColorStop(0,"rgba(0,0,0,.13)");g.addColorStop(.45,"rgba(0,0,0,.045)");g.addColorStop(1,"rgba(0,0,0,0)");
+    c.fillStyle=g;c.fillRect(dx+dw*.04,Math.max(0,dy+dh-28),dw*.92,45);c.restore();
+  }
+  c.drawImage(objectCanvas,b.x,b.y,b.w,b.h,dx,dy,dw,dh);
+  return {canvas,w:outSize,h:outSize};
+}
+
+async function blobOut(canvas){
+  const f=$("format").value,mime=f==="png"?"image/png":f==="webp"?"image/webp":"image/jpeg";
+  const quality=f==="png"?undefined:.95;
+  return new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error("輸出失敗")),mime,quality));
+}
+function bytes(n){return n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(2)+" MB"}
+function esc(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+
+async function processOne(file){
+  const img=await loadImage(file),r=renderWhite(img),blob=await blobOut(r.canvas);
+  const ext=$("format").value,base=file.name.replace(/\.[^.]+$/,"");
+  return {name:`${base}_白底棚拍V5.${ext}`,blob,url:URL.createObjectURL(blob),w:r.w,h:r.h};
+}
+function addResult(r){
   const div=document.createElement("div");div.className="result";
-  div.innerHTML=`<img src="${r.url}" alt=""><div class="resultTitle">${escapeHtml(r.outName)}</div><div class="meta">輸出 ${r.w} × ${r.h} px｜${fmtBytes(r.blob.size)}</div><a class="download" href="${r.url}" download="${encodeURIComponent(r.outName)}">下載</a>`;
+  div.innerHTML=`<img src="${r.url}" alt=""><div class="resultTitle">${esc(r.name)}</div><div class="meta">輸出 ${r.w} × ${r.h} px｜${bytes(r.blob.size)}</div><a class="download" href="${r.url}" download="${encodeURIComponent(r.name)}">下載</a>`;
   resultsEl.appendChild(div);
 }
-function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-
-zipBtn.addEventListener("click",async()=>{
-  const outputs=window.__outputs||[];if(!outputs.length)return;
-  zipBtn.disabled=true;statusEl.textContent="正在建立 ZIP";
+processBtn.addEventListener("click",async()=>{
+  if(!filesState.length)return;
+  processBtn.disabled=true;zipBtn.disabled=true;outputs=[];resultsEl.innerHTML="";
   try{
-    if(!JSZipReady)JSZipReady=import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm");
-    const {default:JSZip}=await JSZipReady;
-    const zip=new JSZip();
-    outputs.forEach(o=>zip.file(o.outName,o.blob));
-    const blob=await zip.generateAsync({type:"blob"});
-    const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="商品白底棚拍V4_全部圖片.zip";a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),2000);
-    statusEl.textContent="ZIP 已準備下載";
+    for(let i=0;i<filesState.length;i++){statusEl.textContent=`正在處理 ${i+1} / ${filesState.length}`;outputs.push(await processOne(filesState[i]));addResult(outputs.at(-1))}
+    zipBtn.disabled=false;statusEl.textContent=`完成，共 ${outputs.length} 張`;
+  }catch(e){statusEl.textContent="處理失敗："+e.message}
+  finally{processBtn.disabled=false}
+});
+zipBtn.addEventListener("click",async()=>{
+  if(!outputs.length)return;zipBtn.disabled=true;statusEl.textContent="正在建立 ZIP";
+  try{
+    if(!JSZipPromise)JSZipPromise=import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm");
+    const {default:JSZip}=await JSZipPromise,zip=new JSZip();
+    outputs.forEach(o=>zip.file(o.name,o.blob));
+    const b=await zip.generateAsync({type:"blob"}),a=document.createElement("a");
+    a.href=URL.createObjectURL(b);a.download="商品白底棚拍V5_全部圖片.zip";a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),2500);statusEl.textContent="ZIP 已準備下載";
   }catch(e){statusEl.textContent="ZIP 建立失敗："+e.message}
   finally{zipBtn.disabled=false}
 });
-
 $("clearBtn").addEventListener("click",()=>{
-  filesState.length=0;fileInput.value="";resultsEl.innerHTML="";window.__outputs=[];
+  filesState=[];outputs=[];fileInput.value="";resultsEl.innerHTML="";
   fileStatus.textContent="尚未選取檔案";statusEl.textContent="";processBtn.disabled=true;zipBtn.disabled=true;
 });

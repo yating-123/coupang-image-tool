@@ -1,85 +1,82 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#f7f8fa">
-  <title>商品白底棚拍工具 V4｜商品輪廓保真版</title>
-  <link rel="stylesheet" href="studio.css">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f7f8fa">
+<title>商品白底棚拍工具 V5｜智慧輪廓＋商品保真版</title>
+<link rel="stylesheet" href="studio.css">
 </head>
 <body>
 <header class="hero">
   <div class="eyebrow">電商商品圖片工具</div>
   <h1>商品白底棚拍工具</h1>
-  <p>商品輪廓保真 × 純白背景 × 自然陰影</p>
-  <div class="version">V4｜商品輪廓保真版</div>
+  <p>智慧輪廓 × 商品保真 × 純白背景</p>
+  <div class="version">V5｜智慧輪廓＋商品保真版</div>
 </header>
 
 <main class="container">
-  <section class="card">
-    <button id="pickBtn" class="uploadBox" type="button">
-      <span class="plus">＋</span>
-      <strong>選擇商品照片</strong>
-      <span>可一次選擇多張</span>
-      <small>JPG / PNG / WebP</small>
-    </button>
-    <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
-    <div id="fileStatus" class="fileStatus">尚未選取檔案</div>
-  </section>
+<section class="card">
+  <button id="pickBtn" class="uploadBox" type="button">
+    <span class="plus">＋</span>
+    <strong>選擇商品照片</strong>
+    <span>可一次選擇多張</span>
+    <small>JPG / PNG / WebP</small>
+  </button>
+  <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple hidden>
+  <div id="fileStatus" class="fileStatus">尚未選取檔案</div>
+</section>
 
-  <section class="card">
-    <h2>商品輪廓保真</h2>
-    <p class="desc">V4 不使用 AI 重繪商品，優先保留原始商品像素與外框，再處理外框以外的背景。</p>
+<section class="card">
+  <h2>智慧輪廓</h2>
+  <div class="control">
+    <div class="row"><label for="edge">輪廓偵測</label><output id="edgeOut">中</output></div>
+    <input id="edge" type="range" min="1" max="3" value="2">
+    <small>低：保守保留｜中：一般商品盒裝｜高：背景較複雜</small>
+  </div>
+  <div class="control">
+    <div class="row"><label for="margin">邊緣保護</label><output id="marginOut">6 px</output></div>
+    <input id="margin" type="range" min="2" max="12" value="6">
+    <small>保留商品外框、四角與細線。</small>
+  </div>
+</section>
 
-    <div class="control">
-      <div class="row"><label for="bgThreshold">背景判斷強度</label><output id="bgThresholdOut">22</output></div>
-      <input id="bgThreshold" type="range" min="8" max="50" value="22">
-      <small>數值越低越保守，適合白色商品外盒。</small>
-    </div>
+<section class="card">
+  <h2>商品保真</h2>
+  <div class="info">商品區域採原圖保留方式處理，不重新生成商品，不改 Logo、文字、顏色與比例。</div>
+  <label class="check"><input id="shadow" type="checkbox" checked> 加入淡淡自然接觸陰影</label>
+</section>
 
-    <div class="control">
-      <div class="row"><label for="protect">邊緣保護</label><output id="protectOut">4 px</output></div>
-      <input id="protect" type="range" min="1" max="8" value="4">
-      <small>保護商品外框、四角與細線，避免被背景判斷吃掉。</small>
-    </div>
+<section class="card">
+  <h2>輸出設定</h2>
+  <div class="grid">
+    <label>輸出尺寸
+      <select id="size">
+        <option value="1000">1000 × 1000 px</option>
+        <option value="1200">1200 × 1200 px</option>
+        <option value="1500">1500 × 1500 px</option>
+        <option value="original">原尺寸</option>
+      </select>
+    </label>
+    <label>輸出格式
+      <select id="format">
+        <option value="jpg">JPG 95%</option>
+        <option value="png">PNG</option>
+        <option value="webp">WebP 95%</option>
+      </select>
+    </label>
+  </div>
+  <label class="check"><input id="center" type="checkbox" checked> 商品自動置中</label>
+  <button id="processBtn" class="primary" disabled>開始製作白底棚拍圖</button>
+  <button id="zipBtn" class="secondary" disabled>下載全部 ZIP</button>
+  <div id="status" class="status"></div>
+</section>
 
-    <div class="control">
-      <div class="row"><label for="shadow">自然陰影</label><output id="shadowOut">12%</output></div>
-      <input id="shadow" type="range" min="0" max="25" value="12">
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>輸出設定</h2>
-    <div class="grid">
-      <label>輸出尺寸
-        <select id="size">
-          <option value="1000">1000 × 1000 px</option>
-          <option value="1200">1200 × 1200 px</option>
-          <option value="1500">1500 × 1500 px</option>
-          <option value="original">原尺寸</option>
-        </select>
-      </label>
-      <label>輸出格式
-        <select id="format">
-          <option value="jpg">JPG 95%</option>
-          <option value="png">PNG</option>
-          <option value="webp">WebP 95%</option>
-        </select>
-      </label>
-    </div>
-    <label class="check"><input id="addShadow" type="checkbox" checked> 加入自然接觸陰影</label>
-    <button id="processBtn" class="primary" type="button" disabled>開始製作白底棚拍圖</button>
-    <button id="zipBtn" class="secondary" type="button" disabled>下載全部 ZIP</button>
-    <div id="status" class="status"></div>
-  </section>
-
-  <section class="card results">
-    <div class="resultsHead"><h2>處理結果</h2><button id="clearBtn" class="clear" type="button">清除全部</button></div>
-    <div id="results"></div>
-  </section>
+<section class="card results">
+  <div class="resultsHead"><h2>處理結果</h2><button id="clearBtn" class="clear" type="button">清除全部</button></div>
+  <div id="results"></div>
+</section>
 </main>
-
 <script src="studio.js"></script>
 </body>
 </html>
