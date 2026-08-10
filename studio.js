@@ -1,174 +1,67 @@
 const $=id=>document.getElementById(id);
-const fileInput=$("fileInput"),pickBtn=$("pickBtn"),fileStatus=$("fileStatus");
-const processBtn=$("processBtn"),zipBtn=$("zipBtn"),resultsEl=$("results"),statusEl=$("status");
-let filesState=[],outputs=[],JSZipPromise=null;
+const fileInput=$("fileInput"),dropzone=$("dropzone"),fileStatus=$("fileStatus"),processBtn=$("processBtn"),zipBtn=$("zipBtn"),results=$("results"),clearBtn=$("clearBtn"),errorBox=$("error"),progressWrap=$("progressWrap"),progressBar=$("progressBar"),progressPct=$("progressPct"),progressText=$("progressText");
+let files=[], outputs=[];
 
-pickBtn.addEventListener("click",()=>fileInput.click());
-fileInput.addEventListener("change",()=>{
-  filesState=[...fileInput.files];
-  fileStatus.textContent=filesState.length?`已選擇 ${filesState.length} 張圖片`:"尚未選取檔案";
-  processBtn.disabled=!filesState.length;
-});
-$("edge").addEventListener("input",e=>{
-  $("edgeOut").textContent=["","低","中","高"][+e.target.value];
-});
-$("margin").addEventListener("input",e=>$("marginOut").textContent=e.target.value+" px");
+fileInput.addEventListener("change",()=>setFiles([...fileInput.files]));
+["dragover","dragenter"].forEach(e=>dropzone.addEventListener(e,x=>{x.preventDefault();dropzone.style.borderColor="#4c7fe8"}));
+["dragleave","drop"].forEach(e=>dropzone.addEventListener(e,x=>{x.preventDefault();dropzone.style.borderColor="#cbd0d8"}));
+dropzone.addEventListener("drop",e=>setFiles([...e.dataTransfer.files]));
+function setFiles(arr){files=arr.filter(f=>/^image\/(jpeg|png|webp)$/.test(f.type)); fileStatus.textContent=files.length?`已選取 ${files.length} 張圖片`:"未選取可處理的圖片";fileStatus.classList.toggle("ok",!!files.length);processBtn.disabled=!files.length;errorBox.textContent=files.length< arr.length?"部分檔案格式不支援，已略過。":""}
+$("conservative").addEventListener("input",e=>{$("conservativeValue").textContent=["","低","中","高"][e.target.value]});
+$("margin").addEventListener("input",e=>$("marginValue").textContent=e.target.value+"%");
+clearBtn.onclick=()=>{outputs=[];results.innerHTML='<div class="empty">尚無處理結果</div>';zipBtn.disabled=true};
 
-function loadImage(file){return new Promise((res,rej)=>{
-  const img=new Image(),u=URL.createObjectURL(file);
-  img.onload=()=>{URL.revokeObjectURL(u);res(img)};img.onerror=()=>{URL.revokeObjectURL(u);rej(new Error("圖片讀取失敗"))};img.src=u;
-})}
-function rgb(d,i){return[d[i],d[i+1],d[i+2]]}
+processBtn.onclick=async()=>{if(!files.length)return;outputs=[];results.innerHTML="";progressWrap.classList.remove("hidden");errorBox.textContent="";processBtn.disabled=true;
+for(let i=0;i<files.length;i++){progressText.textContent=`正在處理 ${i+1}/${files.length}`;try{const out=await processOne(files[i]);outputs.push(out);render(out)}catch(e){render({name:files[i].name,status:"處理失敗："+e.message,error:true})}let p=Math.round((i+1)/files.length*100);progressBar.style.width=p+"%";progressPct.textContent=p+"%";await new Promise(r=>setTimeout(r,30))}
+processBtn.disabled=false;zipBtn.disabled=!outputs.some(x=>x.blob);progressText.textContent="完成";};
+
+function loadImage(file){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error("圖片讀取失敗"));im.src=URL.createObjectURL(file)})}
+function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
 function dist(a,b){return Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])}
-function median(a,k){let v=a.map(x=>x[k]).sort((x,y)=>x-y);return v[Math.floor(v.length/2)]}
-function medianRGB(a){return[median(a,0),median(a,1),median(a,2)]}
+function avgBorder(data,w,h){const pts=[];const step=Math.max(1,Math.floor(Math.min(w,h)/180));for(let x=0;x<w;x+=step){pts.push(px(data,w,x,0));pts.push(px(data,w,x,h-1))}for(let y=0;y<h;y+=step){pts.push(px(data,w,0,y));pts.push(px(data,w,w-1,y))}pts.sort((a,b)=>lum(a)-lum(b));const pick=pts.slice(Math.floor(pts.length*.15),Math.ceil(pts.length*.85));return pick.reduce((s,p)=>s.map((v,i)=>v+p[i]/pick.length),[0,0,0])}
+function px(d,w,x,y){const i=(y*w+x)*4;return[d[i],d[i+1],d[i+2]]}
+function lum(p){return .2126*p[0]+.7152*p[1]+.0722*p[2]}
 
-/*
- V5:
- - 先找「與四周背景相連」的區域，而不是刪除整張圖中相似顏色。
- - 再找背景/商品的轉換帶，建立安全邊界。
- - 商品核心區域永遠保留原像素。
- - 背景只在商品輪廓外側變成純白。
-*/
-function makeMask(ctx,w,h,level,protect){
-  const im=ctx.getImageData(0,0,w,h),d=im.data,n=w*h;
-  const step=Math.max(1,Math.floor(Math.min(w,h)/90)), samples=[];
-  for(let x=0;x<w;x+=step){samples.push(rgb(d,x*4));samples.push(rgb(d,((h-1)*w+x)*4))}
-  for(let y=0;y<h;y+=step){samples.push(rgb(d,(y*w)*4));samples.push(rgb(d,(y*w+w-1)*4))}
-  const ref=medianRGB(samples);
-  const threshold=level===1?16:level===3?34:25;
-  const bg=new Uint8Array(n),seen=new Uint8Array(n),q=new Int32Array(n*0.15+1000);
-  let head=0,tail=0;
-  const queue=[];
-  const push=i=>{if(!seen[i]){seen[i]=1;queue.push(i)}};
-  for(let x=0;x<w;x++){push(x);push((h-1)*w+x)}
-  for(let y=0;y<h;y++){push(y*w);push(y*w+w-1)}
-  const dirs=[1,-1,w,-w];
-  while(head<queue.length){
-    const i=queue[head++],x=i%w;
-    if(dist(rgb(d,i*4),ref)<=threshold){
-      bg[i]=1;
-      for(const dd of dirs){
-        const ni=i+dd;if(ni<0||ni>=n)continue;
-        const nx=ni%w;if((dd===1||dd===-1)&&Math.abs(nx-x)!==1)continue;
-        if(!seen[ni])push(ni);
-      }
-    }
-  }
-  // Transition protection: keep a wider ring around detected object.
-  const keep=new Uint8Array(n), r=protect;
-  for(let y=0;y<h;y++)for(let x=0;x<w;x++){
-    const i=y*w+x;if(!bg[i])continue;
-    let near=false;
-    outer:for(let dy=-r;dy<=r;dy++)for(let dx=-r;dx<=r;dx++){
-      if(Math.abs(dx)+Math.abs(dy)>r)continue;
-      const nx=x+dx,ny=y+dy;
-      if(nx>=0&&nx<w&&ny>=0&&ny<h&&!bg[ny*w+nx]){near=true;break outer}
-    }
-    if(near)keep[i]=1;
-  }
-  return {d,bg,keep,w,h};
+function detectBox(canvas, conservative){
+const ctx=canvas.getContext("2d",{willReadFrequently:true}),w=canvas.width,h=canvas.height,data=ctx.getImageData(0,0,w,h).data,bg=avgBorder(data,w,h);
+const gray=new Uint8Array(w*h);let sum=0,count=0;
+const step=2, thresh=[0,30,38,48][conservative];
+for(let y=0;y<h;y+=step)for(let x=0;x<w;x+=step){const p=px(data,w,x,y);const d=dist(p,bg);const ld=Math.abs(lum(p)-lum(bg));const fg=(d>thresh && (ld>10 || lum(p)>lum(bg)+6 || lum(p)<lum(bg)-18));if(fg){gray[y*w+x]=1;sum+=x;count++}}
+if(!count) return {x:0,y:0,w,h};
+let minX=w,maxX=0,minY=h,maxY=0;
+const margin=8;
+for(let y=margin;y<h-margin;y+=step){let row=0;for(let x=margin;x<w-margin;x+=step)if(gray[y*w+x])row++;if(row>w*.08){minY=Math.min(minY,y);maxY=Math.max(maxY,y)}}
+for(let x=margin;x<w-margin;x+=step){let col=0;for(let y=margin;y<h-margin;y+=step)if(gray[y*w+x])col++;if(col>h*.08){minX=Math.min(minX,x);maxX=Math.max(maxX,x)}}
+if(maxX<=minX||maxY<=minY){return {x:Math.round(w*.08),y:Math.round(h*.06),w:Math.round(w*.84),h:Math.round(h*.88)}}
+const expand=conservative===3?.035:conservative===2?.025:.015;
+minX=Math.floor(minX-(maxX-minX)*expand);maxX=Math.ceil(maxX+(maxX-minX)*expand);
+minY=Math.floor(minY-(maxY-minY)*expand);maxY=Math.ceil(maxY+(maxY-minY)*expand);
+return {x:clamp(minX,0,w-1),y:clamp(minY,0,h-1),w:clamp(maxX-minX,10,w),h:clamp(maxY-minY,10,h)};
 }
-
-function findObjectBounds(mask){
-  let minX=mask.w,minY=mask.h,maxX=-1,maxY=-1;
-  for(let y=0;y<mask.h;y++)for(let x=0;x<mask.w;x++){
-    const i=y*mask.w+x;
-    if(!mask.bg[i]||mask.keep[i]){minX=Math.min(minX,x);minY=Math.min(minY,y);maxX=Math.max(maxX,x);maxY=Math.max(maxY,y)}
-  }
-  if(maxX<0)return{x:0,y:0,w:mask.w,h:mask.h};
-  // Trim only obvious outer margin; keep a small safety border.
-  const pad=Math.max(4,Math.round(Math.min(mask.w,mask.h)*.006));
-  minX=Math.max(0,minX-pad);minY=Math.max(0,minY-pad);maxX=Math.min(mask.w-1,maxX+pad);maxY=Math.min(mask.h-1,maxY+pad);
-  return{x:minX,y:minY,w:maxX-minX+1,h:maxY-minY+1};
-}
-
-function renderWhite(img){
-  const target=$("size").value;
-  const src=document.createElement("canvas");
-  src.width=img.naturalWidth;src.height=img.naturalHeight;
-  const sc=src.getContext("2d",{willReadFrequently:true});sc.drawImage(img,0,0);
-  const level=+$("edge").value, protect=+$("margin").value;
-  const mask=makeMask(sc,src.width,src.height,level,protect);
-  const b=findObjectBounds(mask);
-
-  const outSize=target==="original"?Math.max(b.w,b.h):+target;
-  const canvas=document.createElement("canvas");canvas.width=outSize;canvas.height=outSize;
-  const c=canvas.getContext("2d");
-  c.fillStyle="#fff";c.fillRect(0,0,outSize,outSize);
-
-  const pad=Math.round(outSize*.10);
-  const fit=Math.min((outSize-pad*2)/b.w,(outSize-pad*2)/b.h);
-  const dw=Math.max(1,Math.round(b.w*fit)),dh=Math.max(1,Math.round(b.h*fit));
-  const dx=Math.round((outSize-dw)/2),dy=Math.round((outSize-dh)/2);
-
-  // Build object layer. Background-connected pixels become white; object and transition ring retain source.
-  const objectCanvas=document.createElement("canvas");objectCanvas.width=src.width;objectCanvas.height=src.height;
-  const oc=objectCanvas.getContext("2d");
-  oc.fillStyle="#fff";oc.fillRect(0,0,src.width,src.height);
-  const od=oc.createImageData(src.width,src.height);
-  for(let i=0;i<mask.w*mask.h;i++){
-    const j=i*4;
-    if(!mask.bg[i]||mask.keep[i]){
-      od.data[j]=mask.d[j];od.data[j+1]=mask.d[j+1];od.data[j+2]=mask.d[j+2];od.data[j+3]=255;
-    }else{
-      od.data[j]=255;od.data[j+1]=255;od.data[j+2]=255;od.data[j+3]=255;
-    }
-  }
-  oc.putImageData(od,0,0);
-
-  // Soft contact shadow goes behind the object.
-  if($("shadow").checked){
-    c.save();
-    const sx=dx+dw*.5, sy=dy+dh-2;
-    const g=c.createRadialGradient(sx,sy,2,sx,sy,Math.max(dw*.42,25));
-    g.addColorStop(0,"rgba(0,0,0,.13)");g.addColorStop(.45,"rgba(0,0,0,.045)");g.addColorStop(1,"rgba(0,0,0,0)");
-    c.fillStyle=g;c.fillRect(dx+dw*.04,Math.max(0,dy+dh-28),dw*.92,45);c.restore();
-  }
-  c.drawImage(objectCanvas,b.x,b.y,b.w,b.h,dx,dy,dw,dh);
-  return {canvas,w:outSize,h:outSize};
-}
-
-async function blobOut(canvas){
-  const f=$("format").value,mime=f==="png"?"image/png":f==="webp"?"image/webp":"image/jpeg";
-  const quality=f==="png"?undefined:.95;
-  return new Promise((res,rej)=>canvas.toBlob(b=>b?res(b):rej(new Error("輸出失敗")),mime,quality));
-}
-function bytes(n){return n<1048576?(n/1024).toFixed(0)+" KB":(n/1048576).toFixed(2)+" MB"}
-function esc(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 
 async function processOne(file){
-  const img=await loadImage(file),r=renderWhite(img),blob=await blobOut(r.canvas);
-  const ext=$("format").value,base=file.name.replace(/\.[^.]+$/,"");
-  return {name:`${base}_白底棚拍V5.${ext}`,blob,url:URL.createObjectURL(blob),w:r.w,h:r.h};
+const im=await loadImage(file);const maxSide=1800,scale=Math.min(1,maxSide/Math.max(im.naturalWidth,im.naturalHeight));const sw=Math.max(1,Math.round(im.naturalWidth*scale)),sh=Math.max(1,Math.round(im.naturalHeight*scale));
+const src=document.createElement("canvas");src.width=sw;src.height=sh;src.getContext("2d").drawImage(im,0,0,sw,sh);
+const box=detectBox(src,Number($("conservative").value));const margin=Number($("margin").value)/100;
+const safeX=Math.floor(box.x-box.w*margin),safeY=Math.floor(box.y-box.h*margin),safeW=Math.ceil(box.w*(1+2*margin)),safeH=Math.ceil(box.h*(1+2*margin));
+const outSize=Number($("size").value),out=document.createElement("canvas");out.width=outSize;out.height=outSize;const c=out.getContext("2d");c.fillStyle="#fff";c.fillRect(0,0,outSize,outSize);
+const fit=Math.min((outSize*0.88)/safeW,(outSize*0.88)/safeH);const dw=safeW*fit,dh=safeH*fit,dx=(outSize-dw)/2,dy=(outSize-dh)/2;
+if($("shadow").checked){c.save();c.filter="blur(18px)";c.globalAlpha=.16;c.fillStyle="#000";c.beginPath();c.ellipse(outSize/2,dy+dh*.94,dw*.30,Math.max(8,dh*.025),0,0,Math.PI*2);c.fill();c.restore()}
+c.drawImage(src,safeX,safeY,safeW,safeH,dx,dy,dw,dh);
+const type=$("format").value,quality=type==="image/png"?undefined:.95;
+const blob=await new Promise((res,rej)=>out.toBlob(b=>b?res(b):rej(new Error("輸出失敗")),type,quality));
+const ext=type==="image/png"?"png":type==="image/webp"?"webp":"jpg";
+const base=file.name.replace(/\.[^.]+$/,"");return{name:base+"_白底棚拍V6."+ext,blob,url:URL.createObjectURL(blob),w:outSize,h:outSize,box};
 }
-function addResult(r){
-  const div=document.createElement("div");div.className="result";
-  div.innerHTML=`<img src="${r.url}" alt=""><div class="resultTitle">${esc(r.name)}</div><div class="meta">輸出 ${r.w} × ${r.h} px｜${bytes(r.blob.size)}</div><a class="download" href="${r.url}" download="${encodeURIComponent(r.name)}">下載</a>`;
-  resultsEl.appendChild(div);
-}
-processBtn.addEventListener("click",async()=>{
-  if(!filesState.length)return;
-  processBtn.disabled=true;zipBtn.disabled=true;outputs=[];resultsEl.innerHTML="";
-  try{
-    for(let i=0;i<filesState.length;i++){statusEl.textContent=`正在處理 ${i+1} / ${filesState.length}`;outputs.push(await processOne(filesState[i]));addResult(outputs.at(-1))}
-    zipBtn.disabled=false;statusEl.textContent=`完成，共 ${outputs.length} 張`;
-  }catch(e){statusEl.textContent="處理失敗："+e.message}
-  finally{processBtn.disabled=false}
-});
-zipBtn.addEventListener("click",async()=>{
-  if(!outputs.length)return;zipBtn.disabled=true;statusEl.textContent="正在建立 ZIP";
-  try{
-    if(!JSZipPromise)JSZipPromise=import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm");
-    const {default:JSZip}=await JSZipPromise,zip=new JSZip();
-    outputs.forEach(o=>zip.file(o.name,o.blob));
-    const b=await zip.generateAsync({type:"blob"}),a=document.createElement("a");
-    a.href=URL.createObjectURL(b);a.download="商品白底棚拍V5_全部圖片.zip";a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),2500);statusEl.textContent="ZIP 已準備下載";
-  }catch(e){statusEl.textContent="ZIP 建立失敗："+e.message}
-  finally{zipBtn.disabled=false}
-});
-$("clearBtn").addEventListener("click",()=>{
-  filesState=[];outputs=[];fileInput.value="";resultsEl.innerHTML="";
-  fileStatus.textContent="尚未選取檔案";statusEl.textContent="";processBtn.disabled=true;zipBtn.disabled=true;
-});
+
+function render(o){const div=document.createElement("div");div.className="result";if(o.error){div.innerHTML=`<div class="result-name">${esc(o.name)}</div><div class="error">${esc(o.status)}</div>`}else{div.innerHTML=`<div class="preview-wrap"><img src="${o.url}" alt=""></div><div class="result-name">${esc(o.name)}</div><div class="result-meta">輸出 ${o.w} × ${o.h} px · ${(o.blob.size/1024).toFixed(0)} KB</div><span class="status">商品保真處理完成</span><br><a class="download" href="${o.url}" download="${escAttr(o.name)}">下載</a>`}results.appendChild(div)}
+function esc(s){return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
+function escAttr(s){return esc(s).replace(/`/g,"&#96;")}
+
+zipBtn.onclick=async()=>{if(!outputs.length)return;const zip=await makeZip(outputs.filter(x=>x.blob));const url=URL.createObjectURL(zip);const a=document.createElement("a");a.href=url;a.download="商品白底棚拍V6_全部圖片.zip";a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
+async function makeZip(items){
+const enc=new TextEncoder(),parts=[],central=[];let offset=0;
+for(const item of items){const name=enc.encode(item.name),data=new Uint8Array(await item.blob.arrayBuffer()),crc=crc32(data),local=new Uint8Array(30+name.length+data.length),dv=new DataView(local.buffer);dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);dv.setUint16(8,0,true);dv.setUint16(10,0,true);dv.setUint16(12,0,true);dv.setUint32(14,crc,true);dv.setUint32(18,data.length,true);dv.setUint32(22,data.length,true);dv.setUint16(26,name.length,true);dv.setUint16(28,0,true);local.set(name,30);local.set(data,30+name.length);parts.push(local);
+const c=new Uint8Array(46+name.length);const cd=new DataView(c.buffer);cd.setUint32(0,0x02014b50,true);cd.setUint16(4,20,true);cd.setUint16(6,20,true);cd.setUint16(8,0,true);cd.setUint16(10,0,true);cd.setUint16(12,0,true);cd.setUint16(14,0,true);cd.setUint32(16,crc,true);cd.setUint32(20,data.length,true);cd.setUint32(24,data.length,true);cd.setUint16(28,name.length,true);cd.setUint16(30,0,true);cd.setUint16(32,0,true);cd.setUint16(34,0,true);cd.setUint16(36,0,true);cd.setUint32(38,0,true);cd.setUint32(42,offset,true);c.set(name,46);central.push(c);offset+=local.length}
+const cenSize=central.reduce((s,a)=>s+a.length,0),end=new Uint8Array(22),ed=new DataView(end.buffer);ed.setUint32(0,0x06054b50,true);ed.setUint16(8,items.length,true);ed.setUint16(10,items.length,true);ed.setUint32(12,cenSize,true);ed.setUint32(16,offset,true);return new Blob([...parts,...central,end],{type:"application/zip"})}
+function crc32(bytes){let table=crc32.table;if(!table){table=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;table[n]=c>>>0}crc32.table=table}let c=0xffffffff;for(const b of bytes)c=table[(c^b)&255]^(c>>>8);return(c^0xffffffff)>>>0}
