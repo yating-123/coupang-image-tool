@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f6f8">
-<title>商品白底棚拍工具 V10</title>
+<title>商品白底棚拍工具 V11｜商品像素鎖定版</title>
 <link rel="stylesheet" href="studio.css">
 </head>
 <body>
 <header class="hero">
   <div class="eyebrow">電商商品圖片工具</div>
   <h1>商品白底棚拍工具</h1>
-  <p>商品保真 × 智慧框選 × 純白背景</p>
-  <div class="badge">V10｜智慧框選＋商品保真版</div>
-  <div class="sub">改用「四角框選＋智慧去背景」，不再需要逐點描邊</div>
+  <p>商品像素鎖定 × 純白背景 × 自然接觸陰影</p>
+  <div class="badge">V11｜商品像素鎖定版</div>
+  <div class="sub">商品框內完全保留原始像素，不做 AI 重繪、不做框內去背</div>
 </header>
 
 <main class="container">
@@ -30,23 +30,15 @@
 
 <section class="card" id="selectCard">
   <h2>商品範圍</h2>
-  <p class="intro">不用沿著商品描邊。只要框住整個商品，工具會從框內外的色差判斷背景並保留商品。</p>
-
-  <div class="editor-wrap">
-    <canvas id="editor"></canvas>
-  </div>
-
+  <p class="intro">只框住商品外框即可。框內像素全部鎖定，工具只會把框外背景改成純白。</p>
+  <div class="editor-wrap"><canvas id="editor"></canvas></div>
   <div class="action-grid">
     <button class="primary small" id="smartBtn">智慧框選</button>
     <button class="secondary small" id="resetBtn">重新框選</button>
   </div>
-  <div class="tip">拖曳四個角調整範圍。白色盒裝商品建議框住完整外盒，不要框到太多背景。</div>
+  <div class="tip">拖曳四個角調整。白色盒裝商品請盡量貼近外盒四角，不需要沿邊緣逐點描繪。</div>
 
-  <div class="setting">
-    <div class="setting-title"><span>背景保留程度</span><b id="thresholdValue">24</b></div>
-    <input id="threshold" type="range" min="10" max="45" value="24">
-    <div class="hint">數值越低越保守，適合白色商品；數值越高會清掉更多相近背景。</div>
-  </div>
+  <div class="lock-note"><b>商品像素鎖定</b><span>框內不去背、不改色、不重繪 Logo、文字與圖案。</span></div>
 
   <label class="check"><input id="shadow" type="checkbox" checked><span>加入自然接觸陰影</span></label>
 
