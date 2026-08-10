@@ -1,119 +1,88 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#f5f6f8">
-  <title>酷澎圖片尺寸檢查＋自動調整工具</title>
+  <title>酷澎圖片尺寸檢查＋自動調整工具 V3</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app">
-    <header>
-      <div class="badge">COUPANG IMAGE TOOL</div>
-      <h1>酷澎圖片尺寸檢查＋自動調整工具</h1>
-      <p>批次檢查圖片尺寸、格式與檔案大小，並可依原比例自動調整。</p>
+  <main class="container">
+    <header class="hero">
+      <h1>酷澎圖片尺寸檢查工具</h1>
+      <p>依原始比例等比例調整，並批次打包下載</p>
+      <span class="version">V3｜ZIP 批次下載版</span>
     </header>
 
     <section class="card">
-      <label class="dropzone" id="dropzone">
+      <label class="dropzone" id="dropzone" for="fileInput">
         <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
         <div class="drop-icon">＋</div>
-        <div class="drop-title">拖曳圖片到這裡</div>
-        <div class="drop-subtitle">或點擊選擇圖片，可一次選多張</div>
-        <div class="drop-hint">支援 JPG、PNG、WebP</div>
+        <strong>拖曳圖片到這裡</strong>
+        <span>或點擊選擇圖片，可一次選多張</span>
       </label>
 
-      <div id="fileSummary" class="file-summary" hidden></div>
-
       <div class="settings">
-        <div class="setting">
-          <label for="minSide">最小單邊</label>
-          <div class="input-row">
-            <input id="minSide" type="number" min="1" max="30000" value="1000">
-            <span>px</span>
-          </div>
+        <div class="field">
+          <label for="minSize">最小單邊尺寸</label>
+          <div class="input-unit"><input id="minSize" type="number" min="1" value="1000"><span>px</span></div>
         </div>
-
-        <div class="setting">
-          <label for="maxSide">最大單邊</label>
-          <div class="input-row">
-            <input id="maxSide" type="number" min="1" max="30000" value="10000">
-            <span>px</span>
-          </div>
+        <div class="field">
+          <label for="maxSize">最大單邊尺寸</label>
+          <div class="input-unit"><input id="maxSize" type="number" min="1" value="10000"><span>px</span></div>
         </div>
-
-        <div class="setting">
-          <label for="maxFileMB">最大檔案大小</label>
-          <div class="input-row">
-            <input id="maxFileMB" type="number" min="1" max="500" value="50">
-            <span>MB</span>
-          </div>
+        <div class="field">
+          <label for="maxMB">最大檔案大小</label>
+          <div class="input-unit"><input id="maxMB" type="number" min="0.1" step="0.1" value="50"><span>MB</span></div>
         </div>
-
-        <div class="setting">
+        <div class="field">
           <label for="format">輸出格式</label>
           <select id="format">
+            <option value="original">依原格式</option>
             <option value="image/jpeg">JPG</option>
             <option value="image/png">PNG</option>
             <option value="image/webp">WebP</option>
           </select>
         </div>
-
-        <div class="setting">
+        <div class="field full">
           <label for="quality">JPG / WebP 品質</label>
-          <div class="input-row">
-            <input id="quality" type="number" min="50" max="100" value="95">
-            <span>%</span>
-          </div>
+          <div class="input-unit"><input id="quality" type="number" min="1" max="100" value="95"><span>%</span></div>
         </div>
-      </div>
-
-      <div class="rule-box">
-        <div class="rule-title">目前檢查規則</div>
-        <div class="rule-grid">
-          <div><span>尺寸</span><strong id="ruleSize">1000～10000 px</strong></div>
-          <div><span>格式</span><strong>JPG / PNG / WebP</strong></div>
-          <div><span>檔案大小</span><strong id="ruleFile">≤ 50 MB</strong></div>
-          <div><span>比例</span><strong>保持原比例</strong></div>
-        </div>
-      </div>
-
-      <div class="notice">
-        <strong>自動調整邏輯</strong>
-        <ul>
-          <li>短邊低於最小值：等比例放大。</li>
-          <li>長邊高於最大值：等比例縮小。</li>
-          <li>如果只靠等比例縮放無法同時符合上下限，會標示「需裁切」，不會擅自裁切商品。</li>
-          <li>原本已符合尺寸的圖片不會被放大或縮小。</li>
-          <li>這個工具只能檢查技術規格，無法判斷白底、商品占比、圖片內容或著作權等內容規範。</li>
-        </ul>
       </div>
 
       <div class="actions">
-        <button id="checkBtn" disabled>先檢查圖片</button>
-        <button id="adjustBtn" disabled>自動調整合格圖片</button>
-        <button id="clearBtn" class="secondary">清除</button>
+        <button id="checkBtn" class="primary" disabled>開始檢查</button>
+        <button id="clearBtn" class="secondary" disabled>清除</button>
       </div>
+
+      <p class="hint">規則：短邊低於最小值會等比例放大；超過最大值會等比例縮小。若兩個限制無法同時滿足，會標示為「需人工處理」，不會自動裁切。</p>
     </section>
 
-    <section class="card" id="resultsCard" hidden>
+    <section class="card results" id="resultsSection" hidden>
       <div class="result-head">
         <div>
           <h2>檢查結果</h2>
-          <div id="resultSummary" class="result-summary"></div>
+          <p id="summary">共 0 張</p>
         </div>
-        <button id="downloadAllBtn" class="secondary">下載全部</button>
+        <button id="downloadAllBtn" class="primary small" disabled>下載全部（ZIP）</button>
       </div>
-      <div id="results"></div>
+      <div id="resultList"></div>
     </section>
 
-    <footer>
-      圖片在瀏覽器本機處理，不會上傳到伺服器。
-      <br>
-      酷澎官方公開指南對主圖另有白底、正方形等內容要求，技術尺寸規則請以你目前使用的賣家後台規範為準。
-    </footer>
+    <section class="card note">
+      <h2>使用方式</h2>
+      <ol>
+        <li>一次選擇一張或多張商品圖片。</li>
+        <li>確認最小、最大尺寸與輸出格式。</li>
+        <li>按「開始檢查」。</li>
+        <li>可逐張下載，或按「下載全部（ZIP）」一次打包。</li>
+        <li>ZIP 下載後可在 iPhone「檔案」App 中找到並解壓縮。</li>
+      </ol>
+    </section>
   </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
