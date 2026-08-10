@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#f7f7f5">
+  <title>商品白底棚拍工具 V1</title>
+  <link rel="stylesheet" href="studio.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="brand">電商商品圖片工具</div>
+    <h1>商品白底棚拍工具</h1>
+    <p>AI 自動去背 × 純白背景 × 自然陰影</p>
+    <p class="note">商品本體不重新生成，僅處理背景、位置與陰影</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <label class="dropzone" id="dropzone">
+        <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="drop-icon">＋</div>
+        <strong>拖曳商品照片到這裡</strong>
+        <span>或點擊選擇圖片，可一次選擇多張</span>
+        <small>JPG / PNG / WebP</small>
+      </label>
+    </section>
+
+    <section class="card controls">
+      <h2>輸出設定</h2>
+
+      <div class="grid">
+        <label>
+          <span>商品佔畫布比例</span>
+          <div class="range-row">
+            <input id="scaleInput" type="range" min="50" max="90" value="80">
+            <output id="scaleValue">80%</output>
+          </div>
+        </label>
+
+        <label>
+          <span>陰影強度</span>
+          <div class="range-row">
+            <input id="shadowInput" type="range" min="0" max="45" value="18">
+            <output id="shadowValue">18%</output>
+          </div>
+        </label>
+
+        <label>
+          <span>陰影柔和度</span>
+          <div class="range-row">
+            <input id="blurInput" type="range" min="4" max="40" value="18">
+            <output id="blurValue">18 px</output>
+          </div>
+        </label>
+
+        <label>
+          <span>陰影下移</span>
+          <div class="range-row">
+            <input id="offsetInput" type="range" min="0" max="30" value="8">
+            <output id="offsetValue">8 px</output>
+          </div>
+        </label>
+      </div>
+
+      <div class="row">
+        <label class="select-label">
+          <span>背景</span>
+          <select id="backgroundInput">
+            <option value="#ffffff" selected>純白</option>
+            <option value="#faf9f6">暖白</option>
+            <option value="#f2f2f2">淺灰</option>
+          </select>
+        </label>
+
+        <label class="select-label">
+          <span>輸出尺寸</span>
+          <select id="sizeInput">
+            <option value="1000" selected>最短邊 1000 px</option>
+            <option value="1500">最短邊 1500 px</option>
+            <option value="2000">最短邊 2000 px</option>
+          </select>
+        </label>
+
+        <label class="select-label">
+          <span>輸出格式</span>
+          <select id="formatInput">
+            <option value="jpeg" selected>JPG 95%</option>
+            <option value="png">PNG</option>
+            <option value="webp">WebP 95%</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="checkbox">
+        <input id="shadowEnabled" type="checkbox" checked>
+        <span>加入自然柔和陰影</span>
+      </label>
+
+      <button id="processBtn" class="primary" disabled>開始製作白底棚拍圖</button>
+      <button id="downloadAllBtn" class="secondary" disabled>下載全部 ZIP</button>
+
+      <div id="progressWrap" class="progress-wrap hidden">
+        <div class="progress-head">
+          <span id="progressText">準備中</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress"><div id="progressBar"></div></div>
+      </div>
+
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="card results-card">
+      <div class="results-head">
+        <div>
+          <h2>處理結果</h2>
+          <p id="resultSummary">尚未選擇圖片</p>
+        </div>
+        <button id="clearBtn" class="ghost">清除全部</button>
+      </div>
+      <div id="results" class="results"></div>
+    </section>
+  </main>
+
+  <footer>
+    V1 · 圖片處理在瀏覽器端執行；首次 AI 去背會先下載模型資料
+  </footer>
+
+  <script type="module">
+    import removeBackground from "https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/+esm";
+    window.removeBackground = removeBackground;
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script src="studio.js"></script>
+</body>
+</html>
