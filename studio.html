@@ -1,110 +1,164 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <meta name="theme-color" content="#f7f7f5">
-  <title>商品白底棚拍工具 V1.2</title>
-  <link rel="stylesheet" href="studio.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f5f6f8">
+  <meta name="description" content="商品白底棚拍工具 V2｜商品保真版">
+  <title>商品白底棚拍工具 V2｜商品保真版</title>
+  <link rel="stylesheet" href="studio-v2.css">
 </head>
 <body>
-<header class="hero">
-  <div class="brand">電商商品圖片工具</div>
-  <h1>商品白底棚拍工具</h1>
-  <p>AI 自動去背 × 純白背景 × 自然陰影</p>
-  <p class="note">V1.2 修正版｜改用瀏覽器 ES Module 載入 AI 去背模組</p>
-</header>
-
 <main class="container">
+  <header class="hero">
+    <div class="brand">電商商品圖片工具</div>
+    <h1>商品白底棚拍工具</h1>
+    <p>商品保真去背 × 純白背景 × 自然陰影</p>
+    <span class="version">V2｜商品保真版</span>
+    <p class="subnote">不重新生成商品，盡量保留原圖像素、Logo、文字與商品比例</p>
+  </header>
+
   <section class="card">
-    <label class="dropzone" id="dropzone">
+    <label class="dropzone" id="dropzone" for="fileInput">
       <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
       <div class="drop-icon">＋</div>
       <strong>拖曳商品照片到這裡</strong>
       <span>或點擊選擇圖片，可一次選擇多張</span>
       <small>JPG / PNG / WebP</small>
     </label>
+    <div id="fileSummary" class="file-summary">尚未選取檔案</div>
   </section>
 
-  <section class="card controls">
-    <h2>AI 去背狀態</h2>
-    <div id="aiStatus" class="ai-status loading">
-      <span class="dot"></span>
+  <section class="card">
+    <div class="section-title">
+      <h2>商品保真設定</h2>
+      <p>處理重點是「只移除背景，不重新生成商品」</p>
+    </div>
+
+    <div class="info">
+      <strong>商品保真模式</strong>
+      <span>保留原始商品顏色、Logo、文字與圖案。去背以「邊緣連通背景」判斷，避免把商品內部白色區域當成背景。</span>
+    </div>
+
+    <div class="settings">
+      <div class="field">
+        <label for="tolerance">背景相似度</label>
+        <div class="range-row"><input id="tolerance" type="range" min="4" max="45" value="18"><output id="toleranceOut">18</output></div>
+        <small>數值越低越保守，適合白色商品。</small>
+      </div>
+
+      <div class="field">
+        <label for="edgeProtect">邊緣保護</label>
+        <div class="range-row"><input id="edgeProtect" type="range" min="0" max="8" value="3"><output id="edgeProtectOut">3 px</output></div>
+        <small>保護商品外框與細線，建議 2–4 px。</small>
+      </div>
+
+      <div class="field">
+        <label for="feather">邊緣柔化</label>
+        <div class="range-row"><input id="feather" type="range" min="0" max="3" value="1"><output id="featherOut">1 px</output></div>
+        <small>只做極輕微邊緣過渡，不修改商品內部。</small>
+      </div>
+
+      <div class="field">
+        <label for="canvasRatio">商品佔畫布比例</label>
+        <div class="range-row"><input id="canvasRatio" type="range" min="65" max="92" value="82"><output id="canvasRatioOut">82%</output></div>
+      </div>
+
+      <div class="field">
+        <label for="shadowStrength">陰影強度</label>
+        <div class="range-row"><input id="shadowStrength" type="range" min="0" max="45" value="18"><output id="shadowStrengthOut">18%</output></div>
+      </div>
+
+      <div class="field">
+        <label for="shadowBlur">陰影柔和度</label>
+        <div class="range-row"><input id="shadowBlur" type="range" min="2" max="35" value="18"><output id="shadowBlurOut">18 px</output></div>
+      </div>
+
+      <div class="field">
+        <label for="shadowY">陰影下移</label>
+        <div class="range-row"><input id="shadowY" type="range" min="0" max="24" value="8"><output id="shadowYOut">8 px</output></div>
+      </div>
+
+      <div class="field">
+        <label for="shadowScale">陰影擴散</label>
+        <div class="range-row"><input id="shadowScale" type="range" min="95" max="115" value="102"><output id="shadowScaleOut">102%</output></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title">
+      <h2>輸出設定</h2>
+    </div>
+    <div class="settings">
+      <div class="field">
+        <label for="size">輸出尺寸</label>
+        <select id="size">
+          <option value="1000">1000 × 1000 px</option>
+          <option value="1500">1500 × 1500 px</option>
+          <option value="2000">2000 × 2000 px</option>
+          <option value="original">依原圖比例，最短邊 1000 px</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="format">輸出格式</label>
+        <select id="format">
+          <option value="image/jpeg">JPG 95%</option>
+          <option value="image/png">PNG</option>
+          <option value="image/webp">WebP 95%</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="background">背景</label>
+        <select id="background">
+          <option value="#ffffff">純白</option>
+          <option value="#fafafa">極淺灰白</option>
+        </select>
+      </div>
+
+      <div class="field checkbox-field">
+        <label><input id="addShadow" type="checkbox" checked> 加入自然柔和陰影</label>
+        <small>陰影由原商品遮罩計算，不重新生成商品。</small>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="processBtn" class="primary" disabled>開始製作白底棚拍圖</button>
+      <button id="clearBtn" class="secondary" disabled>清除</button>
+    </div>
+    <p id="status" class="status-text"></p>
+  </section>
+
+  <section class="card results" id="resultsSection" hidden>
+    <div class="result-head">
       <div>
-        <strong id="aiStatusTitle">正在載入 AI 去背模組</strong>
-        <p id="aiStatusText">第一次使用會下載 AI 模型與 WASM 資源，可能需要較長時間。</p>
+        <h2>處理結果</h2>
+        <p id="summary">共 0 張</p>
       </div>
+      <button id="downloadAllBtn" class="primary small" disabled>下載全部 ZIP</button>
     </div>
-
-    <div class="progress-wrap">
-      <div class="progress-head">
-        <span id="modelProgressText">載入中</span>
-        <span id="modelProgressPercent">0%</span>
-      </div>
-      <div class="progress"><div id="modelProgressBar"></div></div>
-    </div>
-
-    <details class="diagnostic">
-      <summary>查看載入資訊</summary>
-      <div id="diagnosticText">正在檢查瀏覽器環境。</div>
-    </details>
+    <div id="resultList"></div>
   </section>
 
-  <section class="card controls">
-    <h2>輸出設定</h2>
-    <div class="grid">
-      <label>
-        <span>商品佔畫布比例</span>
-        <div class="range-row">
-          <input id="scaleInput" type="range" min="50" max="90" value="80">
-          <output id="scaleValue">80%</output>
-        </div>
-      </label>
-      <label>
-        <span>陰影強度</span>
-        <div class="range-row">
-          <input id="shadowInput" type="range" min="0" max="45" value="18">
-          <output id="shadowValue">18%</output>
-        </div>
-      </label>
-      <label>
-        <span>陰影柔和度</span>
-        <div class="range-row">
-          <input id="blurInput" type="range" min="4" max="40" value="18">
-          <output id="blurValue">18 px</output>
-        </div>
-      </label>
-      <label>
-        <span>陰影下移</span>
-        <div class="range-row">
-          <input id="offsetInput" type="range" min="0" max="30" value="8">
-          <output id="offsetValue">8 px</output>
-        </div>
-      </label>
-    </div>
-
-    <div class="row">
-      <label class="select-label"><span>背景</span><select id="backgroundInput"><option value="#ffffff">純白</option><option value="#faf9f6">暖白</option><option value="#f2f2f2">淺灰</option></select></label>
-      <label class="select-label"><span>輸出尺寸</span><select id="sizeInput"><option value="1000">最短邊 1000 px</option><option value="1500">最短邊 1500 px</option><option value="2000">最短邊 2000 px</option></select></label>
-      <label class="select-label"><span>輸出格式</span><select id="formatInput"><option value="jpeg">JPG 95%</option><option value="png">PNG</option><option value="webp">WebP 95%</option></select></label>
-    </div>
-
-    <label class="checkbox"><input id="shadowEnabled" type="checkbox" checked><span>加入自然柔和陰影</span></label>
-    <button id="processBtn" class="primary" disabled>等待 AI 模組完成</button>
-    <button id="downloadAllBtn" class="secondary" disabled>下載全部 ZIP</button>
-    <div id="status" class="status"></div>
+  <section class="card note">
+    <h2>V2 商品保真版重點</h2>
+    <ul>
+      <li>不使用生成式 AI 重繪商品，避免 Logo、文字與商品顏色被改變。</li>
+      <li>以邊緣連通背景方式處理，商品內部的白色區域原則上不會被當成背景。</li>
+      <li>可調整背景相似度與邊緣保護，白色商品建議先使用較低相似度。</li>
+      <li>陰影獨立由商品遮罩計算，方便調整強度、柔和度與位置。</li>
+      <li>原始商品會等比例縮放，不裁切、不變形。</li>
+    </ul>
+    <p class="warning">提醒：任何自動去背工具都可能在極低對比、背景與商品完全同色、或商品邊緣非常模糊的照片中誤判。建議先檢查預覽，再下載上架圖。</p>
   </section>
 
-  <section class="card results-card">
-    <div class="results-head">
-      <div><h2>處理結果</h2><p id="resultSummary">尚未選擇圖片</p></div>
-      <button id="clearBtn" class="ghost">清除全部</button>
-    </div>
-    <div id="results" class="results"></div>
-  </section>
+  <footer>
+    本工具為獨立開發的第三方圖片處理工具，與任何電商平台無隸屬、合作或授權關係。
+  </footer>
 </main>
-
-<footer>V1.2 · 圖片與 AI 去背處理於瀏覽器端執行</footer>
-<script src="studio.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="studio-v2.js"></script>
 </body>
 </html>
