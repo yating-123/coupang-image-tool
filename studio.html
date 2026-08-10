@@ -4,15 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#f7f7f5">
-  <title>商品白底棚拍工具 V1.1</title>
-  <link rel="stylesheet" href="studio.css">
+  <title>商品白底棚拍工具 V1.2</title>
+  <link rel="stylesheet" href="studio-v1.2.css">
 </head>
 <body>
 <header class="hero">
   <div class="brand">電商商品圖片工具</div>
   <h1>商品白底棚拍工具</h1>
   <p>AI 自動去背 × 純白背景 × 自然陰影</p>
-  <p class="note">V1.1 修正版｜商品本體不重新生成，僅處理背景、位置與陰影</p>
+  <p class="note">V1.2 修正版｜改用瀏覽器 ES Module 載入 AI 去背模組</p>
 </header>
 
 <main class="container">
@@ -31,23 +31,27 @@
     <div id="aiStatus" class="ai-status loading">
       <span class="dot"></span>
       <div>
-        <strong id="aiStatusTitle">正在準備 AI 去背模組</strong>
-        <p id="aiStatusText">第一次使用需要載入 AI 模型，請稍候。</p>
+        <strong id="aiStatusTitle">正在載入 AI 去背模組</strong>
+        <p id="aiStatusText">第一次使用會下載 AI 模型與 WASM 資源，可能需要較長時間。</p>
       </div>
     </div>
 
-    <div class="progress-wrap" id="modelProgressWrap">
+    <div class="progress-wrap">
       <div class="progress-head">
-        <span id="modelProgressText">準備中</span>
+        <span id="modelProgressText">載入中</span>
         <span id="modelProgressPercent">0%</span>
       </div>
       <div class="progress"><div id="modelProgressBar"></div></div>
     </div>
+
+    <details class="diagnostic">
+      <summary>查看載入資訊</summary>
+      <div id="diagnosticText">正在檢查瀏覽器環境。</div>
+    </details>
   </section>
 
   <section class="card controls">
     <h2>輸出設定</h2>
-
     <div class="grid">
       <label>
         <span>商品佔畫布比例</span>
@@ -56,7 +60,6 @@
           <output id="scaleValue">80%</output>
         </div>
       </label>
-
       <label>
         <span>陰影強度</span>
         <div class="range-row">
@@ -64,7 +67,6 @@
           <output id="shadowValue">18%</output>
         </div>
       </label>
-
       <label>
         <span>陰影柔和度</span>
         <div class="range-row">
@@ -72,7 +74,6 @@
           <output id="blurValue">18 px</output>
         </div>
       </label>
-
       <label>
         <span>陰影下移</span>
         <div class="range-row">
@@ -83,62 +84,27 @@
     </div>
 
     <div class="row">
-      <label class="select-label">
-        <span>背景</span>
-        <select id="backgroundInput">
-          <option value="#ffffff" selected>純白</option>
-          <option value="#faf9f6">暖白</option>
-          <option value="#f2f2f2">淺灰</option>
-        </select>
-      </label>
-
-      <label class="select-label">
-        <span>輸出尺寸</span>
-        <select id="sizeInput">
-          <option value="1000" selected>最短邊 1000 px</option>
-          <option value="1500">最短邊 1500 px</option>
-          <option value="2000">最短邊 2000 px</option>
-        </select>
-      </label>
-
-      <label class="select-label">
-        <span>輸出格式</span>
-        <select id="formatInput">
-          <option value="jpeg" selected>JPG 95%</option>
-          <option value="png">PNG</option>
-          <option value="webp">WebP 95%</option>
-        </select>
-      </label>
+      <label class="select-label"><span>背景</span><select id="backgroundInput"><option value="#ffffff">純白</option><option value="#faf9f6">暖白</option><option value="#f2f2f2">淺灰</option></select></label>
+      <label class="select-label"><span>輸出尺寸</span><select id="sizeInput"><option value="1000">最短邊 1000 px</option><option value="1500">最短邊 1500 px</option><option value="2000">最短邊 2000 px</option></select></label>
+      <label class="select-label"><span>輸出格式</span><select id="formatInput"><option value="jpeg">JPG 95%</option><option value="png">PNG</option><option value="webp">WebP 95%</option></select></label>
     </div>
 
-    <label class="checkbox">
-      <input id="shadowEnabled" type="checkbox" checked>
-      <span>加入自然柔和陰影</span>
-    </label>
-
+    <label class="checkbox"><input id="shadowEnabled" type="checkbox" checked><span>加入自然柔和陰影</span></label>
     <button id="processBtn" class="primary" disabled>等待 AI 模組完成</button>
     <button id="downloadAllBtn" class="secondary" disabled>下載全部 ZIP</button>
-
     <div id="status" class="status"></div>
   </section>
 
   <section class="card results-card">
     <div class="results-head">
-      <div>
-        <h2>處理結果</h2>
-        <p id="resultSummary">尚未選擇圖片</p>
-      </div>
+      <div><h2>處理結果</h2><p id="resultSummary">尚未選擇圖片</p></div>
       <button id="clearBtn" class="ghost">清除全部</button>
     </div>
     <div id="results" class="results"></div>
   </section>
 </main>
 
-<footer>V1.1 · 圖片處理在瀏覽器端執行</footer>
-
-<!-- 使用 UMD 方式載入，避免 V1 的 module 載入問題 -->
-<script src="https://cdn.jsdelivr.net/npm/@imgly/background-removal@1.7.0/dist/browser/index.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-<script src="studio.js"></script>
+<footer>V1.2 · 圖片與 AI 去背處理於瀏覽器端執行</footer>
+<script src="studio-v1.2.js" defer></script>
 </body>
 </html>
