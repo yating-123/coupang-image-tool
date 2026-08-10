@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>酷澎圖片尺寸調整工具</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>酷澎圖片尺寸調整工具</h1>
+      <p>依原始比例等比例放大，讓圖片單邊至少達到 1000 px。</p>
+    </header>
+
+    <section class="card">
+      <label class="dropzone" id="dropzone">
+        <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+        <div class="drop-title">拖曳圖片到這裡</div>
+        <div class="drop-subtitle">或點擊選擇圖片，可一次選多張</div>
+      </label>
+
+      <div class="settings">
+        <div>
+          <label for="minSide">最小單邊尺寸</label>
+          <div class="input-row">
+            <input id="minSide" type="number" min="1" max="10000" value="1000">
+            <span>px</span>
+          </div>
+        </div>
+
+        <div>
+          <label for="format">輸出格式</label>
+          <select id="format">
+            <option value="image/jpeg">JPG</option>
+            <option value="image/png">PNG</option>
+            <option value="image/webp">WebP</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="quality">JPG / WebP 品質</label>
+          <div class="input-row">
+            <input id="quality" type="number" min="50" max="100" value="95">
+            <span>%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="notice">
+        <strong>等比例放大規則</strong>
+        <ul>
+          <li>短邊小於設定值：自動等比例放大至設定值。</li>
+          <li>短邊已達設定值以上：不縮小，維持原尺寸。</li>
+          <li>長寬比例不變，不會拉伸變形。</li>
+          <li>例如 720 × 340 px → 約 2118 × 1000 px。</li>
+          <li>例如 800 × 1200 px → 1000 × 1500 px。</li>
+        </ul>
+      </div>
+
+      <div class="actions">
+        <button id="processBtn" disabled>開始調整</button>
+        <button id="clearBtn" class="secondary">清除</button>
+      </div>
+    </section>
+
+    <section class="card" id="resultsCard" hidden>
+      <div class="result-head">
+        <h2>處理結果</h2>
+        <button id="downloadAllBtn">下載全部</button>
+      </div>
+      <div id="results"></div>
+    </section>
+
+    <footer>
+      圖片在瀏覽器本機處理，不需要上傳到伺服器。
+    </footer>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

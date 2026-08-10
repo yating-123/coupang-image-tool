@@ -1,0 +1,34 @@
+*{box-sizing:border-box}
+body{margin:0;background:#f5f6f8;color:#222;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft JhengHei",sans-serif}
+.app{max-width:900px;margin:0 auto;padding:36px 18px 60px}
+header{text-align:center;margin-bottom:24px}
+h1{margin:0 0 10px;font-size:30px}
+header p{margin:0;color:#666}
+.card{background:#fff;border-radius:16px;padding:24px;margin-bottom:18px;box-shadow:0 4px 18px rgba(0,0,0,.06)}
+.dropzone{display:block;border:2px dashed #b9bec8;border-radius:14px;padding:44px 20px;text-align:center;cursor:pointer;background:#fafbfc}
+.dropzone:hover{background:#f3f5f8}
+.dropzone input{display:none}
+.drop-title{font-size:21px;font-weight:700;margin-bottom:8px}
+.drop-subtitle{color:#777}
+.settings{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+.settings label{display:block;font-weight:600;margin-bottom:7px}
+.input-row{display:flex;align-items:center;gap:8px}
+input[type=number],select{width:100%;height:42px;border:1px solid #d5d8de;border-radius:8px;padding:0 10px;font-size:15px}
+.input-row input{flex:1}
+.input-row span{white-space:nowrap;color:#666}
+.notice{background:#f7f8fa;border-radius:10px;padding:14px 18px;margin-top:20px;color:#555;font-size:14px}
+.notice strong{color:#222}
+.notice ul{margin:8px 0 0;padding-left:20px;line-height:1.8}
+.actions{display:flex;gap:10px;margin-top:20px}
+button{border:0;border-radius:9px;padding:12px 20px;font-size:15px;font-weight:600;cursor:pointer;background:#222;color:#fff}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.secondary{background:#e9ebef;color:#333}
+.result-head{display:flex;justify-content:space-between;align-items:center}
+.result-head h2{margin:0}
+.result{display:grid;grid-template-columns:110px 1fr auto;gap:14px;align-items:center;border-top:1px solid #eee;padding:15px 0}
+.thumb{width:110px;height:90px;object-fit:contain;background:#f7f7f7;border-radius:8px}
+.meta .name{font-weight:600;word-break:break-all}
+.meta .dims{font-size:13px;color:#666;margin-top:5px;line-height:1.5}
+.small-btn{padding:9px 13px;font-size:13px}
+footer{text-align:center;color:#888;font-size:13px;margin-top:20px}
+@media(max-width:700px){.settings{grid-template-columns:1fr}.result{grid-template-columns:80px 1fr}.result button{grid-column:2}.thumb{width:80px;height:70px}}
