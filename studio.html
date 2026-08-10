@@ -4,54 +4,96 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f6f8">
-<title>商品白底棚拍工具 V8｜商品輪廓＋保真版</title>
+<title>商品白底棚拍工具 V9｜智慧輪廓＋人工保護版</title>
 <link rel="stylesheet" href="studio.css">
 </head>
 <body>
 <header class="hero">
   <div class="eyebrow">電商商品圖片工具</div>
   <h1>商品白底棚拍工具</h1>
-  <p>商品保真 × 智慧輪廓 × 純白背景 × 自然陰影</p>
-  <div class="badge">V8｜商品輪廓＋保真修正版</div>
-  <div class="sub">強化背景邊界判斷，避免白色盒面被誤刪</div>
+  <p>商品保真 × 智慧輪廓 × 純白背景</p>
+  <div class="badge">V9｜智慧輪廓＋人工保護版</div>
+  <div class="sub">不重新生成商品，改用「商品範圍＋智慧去背＋局部修正」</div>
 </header>
+
 <main class="container">
 <section class="card">
-<label class="dropzone" id="dropzone">
-<input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-<div class="plus">＋</div><strong>拖曳商品照片到這裡</strong>
-<span>或點擊選擇圖片，可一次選擇多張</span><small>JPG / PNG / WebP</small>
-</label>
-<div id="fileStatus" class="file-status">尚未選取檔案</div>
+  <label class="dropzone" id="dropzone">
+    <input id="fileInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+    <div class="plus">＋</div>
+    <strong>拖曳商品照片到這裡</strong>
+    <span>或點擊選擇圖片，可一次選擇多張</span>
+    <small>JPG / PNG / WebP</small>
+  </label>
+  <div class="file-status" id="fileStatus">尚未選取檔案</div>
 </section>
 
-<section class="card">
-<h2>處理設定</h2>
-<div class="setting">
-<div class="setting-title"><span>背景去除強度</span><b id="strengthValue">保守</b></div>
-<input id="strength" type="range" min="1" max="3" value="1">
-<div class="hint">保守優先保留商品；若四周仍有灰色背景，再調成標準。</div>
-</div>
-<div class="setting">
-<div class="setting-title"><span>輪廓保護</span><b id="protectValue">4 px</b></div>
-<input id="protect" type="range" min="1" max="8" value="4">
-<div class="hint">數值越高越保守，避免盒子邊緣、細線被吃掉。</div>
-</div>
-<label class="check"><input id="shadow" type="checkbox" checked><span>加入自然接觸陰影</span></label>
-<div class="row">
-<label class="selectbox"><span>輸出尺寸</span><select id="size"><option value="1000">1000 × 1000 px</option><option value="1200">1200 × 1200 px</option><option value="1500">1500 × 1500 px</option></select></label>
-<label class="selectbox"><span>輸出格式</span><select id="format"><option value="image/jpeg">JPG 95%</option><option value="image/png">PNG</option><option value="image/webp">WebP 95%</option></select></label>
-</div>
-<button class="primary" id="processBtn" disabled>開始製作白底棚拍圖</button>
-<button class="secondary" id="zipBtn" disabled>下載全部 ZIP</button>
-<div class="progress-wrap hidden" id="progressWrap"><div class="progress-label"><span id="progressText">準備中</span><span id="progressPct">0%</span></div><div class="progress"><i id="progressBar"></i></div></div>
-<div class="error" id="error"></div>
+<section class="card" id="editorCard">
+  <h2>商品輪廓</h2>
+  <p class="intro">這版不再單靠「低／中／高」猜輪廓。先用手指框住商品，再由工具處理背景，白色商品也比較不容易被誤刪。</p>
+
+  <div class="editor-wrap">
+    <canvas id="editor"></canvas>
+    <div class="tip">依序點擊商品外框的角落或轉折點，最多 12 點。完成後按「完成輪廓」。</div>
+  </div>
+
+  <div class="tool-row">
+    <button class="tool active" id="polygonBtn">① 商品輪廓</button>
+    <button class="tool" id="protectBtn">② 保護商品</button>
+    <button class="tool" id="eraseBtn">③ 修掉背景</button>
+  </div>
+
+  <div class="small-row">
+    <button class="secondary small" id="undoBtn">返回上一點</button>
+    <button class="secondary small" id="resetPolyBtn">重新框選</button>
+    <button class="primary small" id="finishBtn">完成輪廓</button>
+  </div>
+
+  <div class="brush-row hidden" id="brushRow">
+    <label>筆刷大小 <input id="brush" type="range" min="8" max="80" value="30"></label>
+    <span id="brushVal">30 px</span>
+  </div>
+
+  <div class="setting">
+    <div class="setting-title"><span>邊緣保護</span><b id="protectValue">6 px</b></div>
+    <input id="protectPx" type="range" min="2" max="12" value="6">
+    <div class="hint">提高可避免盒子外框、細線、Logo 被吃掉。</div>
+  </div>
+
+  <label class="check"><input id="shadow" type="checkbox" checked><span>加入自然接觸陰影</span></label>
+
+  <div class="row">
+    <label class="selectbox"><span>輸出尺寸</span>
+      <select id="size">
+        <option value="1000">1000 × 1000 px</option>
+        <option value="1200">1200 × 1200 px</option>
+        <option value="1500">1500 × 1500 px</option>
+      </select>
+    </label>
+    <label class="selectbox"><span>輸出格式</span>
+      <select id="format">
+        <option value="image/jpeg">JPG 95%</option>
+        <option value="image/png">PNG</option>
+        <option value="image/webp">WebP 95%</option>
+      </select>
+    </label>
+  </div>
+
+  <button class="primary" id="processBtn" disabled>開始製作白底棚拍圖</button>
+  <button class="secondary" id="zipBtn" disabled>下載全部 ZIP</button>
+
+  <div class="progress-wrap hidden" id="progressWrap">
+    <div class="progress-label"><span id="progressText">準備中</span><span id="progressPct">0%</span></div>
+    <div class="progress"><i id="progressBar"></i></div>
+  </div>
+  <div class="error" id="error"></div>
 </section>
 
 <section class="card results-card">
-<div class="results-head"><h2>處理結果</h2><button class="clear" id="clearBtn">清除全部</button></div>
-<div id="results"><div class="empty">尚無處理結果</div></div>
+  <div class="results-head"><h2>處理結果</h2><button class="clear" id="clearBtn">清除全部</button></div>
+  <div id="results"><div class="empty">尚無處理結果</div></div>
 </section>
 </main>
 <script src="studio.js"></script>
-</body></html>
+</body>
+</html>
