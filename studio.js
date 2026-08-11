@@ -1,37 +1,113 @@
-const $=id=>document.getElementById(id);
-const fileInput=$('fileInput'),dropzone=$('dropzone'),fileStatus=$('fileStatus'),editor=$('editor'),ctx=editor.getContext('2d'),processBtn=$('processBtn'),zipBtn=$('zipBtn'),results=$('results'),clearBtn=$('clearBtn'),progressWrap=$('progressWrap'),progressBar=$('progressBar'),progressPct=$('progressPct'),progressText=$('progressText');
-let files=[],outputs=[],srcCanvas=null,frame=null,dragCorner=-1;
-fileInput.onchange=()=>setFiles([...fileInput.files]);
-['dragover','dragenter'].forEach(e=>dropzone.addEventListener(e,x=>{x.preventDefault();dropzone.style.borderColor='#4c7fe8'}));
-['dragleave','drop'].forEach(e=>dropzone.addEventListener(e,x=>{x.preventDefault();dropzone.style.borderColor='#cbd0d8'}));
-dropzone.addEventListener('drop',e=>setFiles([...e.dataTransfer.files]));
-function setFiles(arr){files=arr.filter(f=>/^image\/(jpeg|png|webp)$/.test(f.type));fileStatus.textContent=files.length?`已選取 ${files.length} 張圖片`:'未選取可處理的圖片';fileStatus.classList.toggle('ok',!!files.length);if(files.length)loadFirst(files[0]);processBtn.disabled=!files.length||!frame}
-function loadFirst(f){const u=URL.createObjectURL(f),im=new Image();im.onload=()=>{const max=1600,s=Math.min(1,max/im.naturalWidth);srcCanvas=document.createElement('canvas');srcCanvas.width=Math.round(im.naturalWidth*s);srcCanvas.height=Math.round(im.naturalHeight*s);srcCanvas.getContext('2d').drawImage(im,0,0,srcCanvas.width,srcCanvas.height);editor.width=srcCanvas.width;editor.height=srcCanvas.height;smartFrame();URL.revokeObjectURL(u)};im.src=u}
-function smartFrame(){if(!srcCanvas)return;const w=srcCanvas.width,h=srcCanvas.height;frame={p:[{x:w*.13,y:h*.08},{x:w*.87,y:h*.08},{x:w*.87,y:h*.90},{x:w*.13,y:h*.90}]};draw()}
-$('smartBtn').onclick=smartFrame;$('resetBtn').onclick=smartFrame;
-function pointer(e){const r=editor.getBoundingClientRect();return{x:(e.clientX-r.left)*editor.width/r.width,y:(e.clientY-r.top)*editor.height/r.height}}
-function nearCorner(p){let best=-1,bd=Math.max(36,editor.width*.035);frame.p.forEach((q,i)=>{const z=Math.hypot(p.x-q.x,p.y-q.y);if(z<bd){bd=z;best=i}});return best}
-editor.addEventListener('pointerdown',e=>{const p=pointer(e);dragCorner=nearCorner(p);if(dragCorner>=0)editor.setPointerCapture(e.pointerId)});
-editor.addEventListener('pointermove',e=>{if(dragCorner<0||!frame)return;const p=pointer(e),min=20;frame.p[dragCorner].x=Math.max(min,Math.min(editor.width-min,p.x));frame.p[dragCorner].y=Math.max(min,Math.min(editor.height-min,p.y));draw()});
-editor.addEventListener('pointerup',()=>dragCorner=-1);
-function draw(){if(!srcCanvas||!frame)return;ctx.clearRect(0,0,editor.width,editor.height);ctx.drawImage(srcCanvas,0,0);ctx.save();ctx.fillStyle='rgba(0,0,0,.22)';ctx.fillRect(0,0,editor.width,editor.height);ctx.globalCompositeOperation='destination-out';ctx.beginPath();ctx.moveTo(frame.p[0].x,frame.p[0].y);frame.p.slice(1).forEach(q=>ctx.lineTo(q.x,q.y));ctx.closePath();ctx.fill();ctx.restore();ctx.save();ctx.strokeStyle='#2d72e8';ctx.lineWidth=Math.max(4,editor.width/260);ctx.beginPath();ctx.moveTo(frame.p[0].x,frame.p[0].y);frame.p.slice(1).forEach(q=>ctx.lineTo(q.x,q.y));ctx.closePath();ctx.stroke();frame.p.forEach(q=>{ctx.beginPath();ctx.fillStyle='#fff';ctx.strokeStyle='#2d72e8';ctx.lineWidth=4;ctx.arc(q.x,q.y,11,0,Math.PI*2);ctx.fill();ctx.stroke()});ctx.restore();processBtn.disabled=!files.length||!frame}
-function loadImageCanvas(file,max=1800){return new Promise((resolve,reject)=>{const u=URL.createObjectURL(file),im=new Image();im.onload=()=>{const s=Math.min(1,max/im.naturalWidth),c=document.createElement('canvas');c.width=Math.round(im.naturalWidth*s);c.height=Math.round(im.naturalHeight*s);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(u);resolve(c)};im.onerror=reject;im.src=u})}
-function polygonMask(canvas,norm){const w=canvas.width,h=canvas.height,mask=new Uint8Array(w*h),p=norm.map(q=>({x:q.x*w,y:q.y*h}));const minX=Math.max(0,Math.floor(Math.min(...p.map(q=>q.x)))),maxX=Math.min(w-1,Math.ceil(Math.max(...p.map(q=>q.x)))),minY=Math.max(0,Math.floor(Math.min(...p.map(q=>q.y)))),maxY=Math.min(h-1,Math.ceil(Math.max(...p.map(q=>q.y))));function inside(x,y){let hit=false;for(let i=0,j=p.length-1;i<p.length;j=i++){const a=p[i],b=p[j];if(((a.y>y)!=(b.y>y))&&x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)hit=!hit}return hit}for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++)if(inside(x+.5,y+.5))mask[y*w+x]=1;return{mask,minX,maxX,minY,maxY}}
-function quadToNorm(){return frame.p.map(q=>({x:q.x/editor.width,y:q.y/editor.height}))}
-function percentile(vals,p){if(!vals.length)return 255;vals.sort((a,b)=>a-b);return vals[Math.min(vals.length-1,Math.floor((vals.length-1)*p))]}
-function colorCorrect(data,w,h,mask,opts){const out=new Uint8ClampedArray(data.length);out.set(data);let white=[];let lum=[];for(let y=0;y<h;y+=2)for(let x=0;x<w;x+=2){const k=y*w+x;if(!mask[k])continue;const i=k*4,r=data[i],g=data[i+1],b=data[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx?((mx-mn)/mx):0,l=.2126*r+.7152*g+.0722*b;if(sat<.10&&l>150){white.push(l);if(white.length<12000)lum.push(l)}}let wp=percentile(white,.92);let scale=opts.wb?Math.min(1.18,Math.max(1,248/wp)):1;const br=opts.brightness/100,con=opts.contrast/100;for(let i=0;i<data.length;i+=4){const k=i/4;if(!mask[k]){out[i+3]=0;continue}let r=data[i]*scale,g=data[i+1]*scale,b=data[i+2]*scale;r=r+(255-r)*br;g=g+(255-g)*br;b=b+(255-b)*br;const factor=1+con;r=128+(r-128)*factor;g=128+(g-128)*factor;b=128+(b-128)*factor;out[i]=Math.max(0,Math.min(255,r));out[i+1]=Math.max(0,Math.min(255,g));out[i+2]=Math.max(0,Math.min(255,b));out[i+3]=255}return out}
-async function processOne(file){const source=await loadImageCanvas(file),norm=quadToNorm(),m=polygonMask(source,norm),w=source.width,h=source.height,d=source.getContext('2d').getImageData(0,0,w,h).data;let x0=m.minX,y0=m.minY,x1=m.maxX,y1=m.maxY;const pad=.012,bw=x1-x0+1,bh=y1-y0+1;x0=Math.max(0,Math.floor(x0-bw*pad));y0=Math.max(0,Math.floor(y0-bh*pad));x1=Math.min(w-1,Math.ceil(x1+bw*pad));y1=Math.min(h-1,Math.ceil(y1+bh*pad));const cw=x1-x0+1,ch=y1-y0+1,size=+$('size').value,out=document.createElement('canvas');out.width=size;out.height=size;const c=out.getContext('2d');c.fillStyle='#fff';c.fillRect(0,0,size,size);const fit=Math.min(size*.84/cw,size*.84/ch),dw=cw*fit,dh=ch*fit,dx=(size-dw)/2,dy=(size-dh)/2;const subMask=new Uint8Array(cw*ch);const sd=new Uint8ClampedArray(cw*ch*4);for(let yy=0;yy<ch;yy++)for(let xx=0;xx<cw;xx++){const sx=x0+xx,sy=y0+yy,k=sy*w+sx,si=k*4,li=(yy*cw+xx)*4;subMask[yy*cw+xx]=m.mask[k];if(m.mask[k]){sd[li]=d[si];sd[li+1]=d[si+1];sd[li+2]=d[si+2];sd[li+3]=255}}
-const corrected=colorCorrect(sd,cw,ch,subMask,{wb:$('wb').checked,brightness:+$('brightness').value,contrast:+$('contrast').value});const layer=document.createElement('canvas');layer.width=cw;layer.height=ch;layer.getContext('2d').putImageData(new ImageData(corrected,cw,ch),0,0);
-if($('shadow').checked){c.save();c.globalAlpha=.13;c.filter='blur(18px)';c.fillStyle='#000';c.beginPath();c.ellipse(size/2,dy+dh*.975,dw*.27,Math.max(7,dh*.016),0,0,Math.PI*2);c.fill();c.restore()}
-c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';c.drawImage(layer,dx,dy,dw,dh);const type=$('format').value,blob=await new Promise((r,j)=>out.toBlob(b=>b?r(b):j(Error('輸出失敗')),type,type==='image/png'?undefined:.95));const ext=type==='image/png'?'png':type==='image/webp'?'webp':'jpg';return{name:file.name.replace(/\.[^.]+$/,'')+'_白底棚拍V12.'+ext,blob,url:URL.createObjectURL(blob),w:size,h:size}}
-processBtn.onclick=async()=>{outputs=[];results.innerHTML='';progressWrap.classList.remove('hidden');processBtn.disabled=true;for(let i=0;i<files.length;i++){progressText.textContent=`正在處理 ${i+1}/${files.length}`;try{const o=await processOne(files[i]);outputs.push(o);render(o)}catch(e){render({name:files[i].name,error:'處理失敗：'+e.message})}const p=Math.round((i+1)/files.length*100);progressBar.style.width=p+'%';progressPct.textContent=p+'%';await new Promise(r=>setTimeout(r,10))}progressText.textContent='完成';processBtn.disabled=false;zipBtn.disabled=!outputs.length};
-function render(o){const d=document.createElement('div');d.className='result';d.innerHTML=o.error?`<div class="result-name">${esc(o.name)}</div><div class="error">${esc(o.error)}</div>`:`<div class="preview-wrap"><img src="${o.url}"></div><div class="result-name">${esc(o.name)}</div><div class="result-meta">輸出 ${o.w} × ${o.h} px · ${(o.blob.size/1024).toFixed(0)} KB</div><span class="status">棚拍校正完成</span><br><a class="download" href="${o.url}" download="${esc(o.name)}">下載</a>`;results.appendChild(d)}
-function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-clearBtn.onclick=()=>{outputs.forEach(x=>x.url&&URL.revokeObjectURL(x.url));outputs=[];results.innerHTML='<div class="empty">尚無處理結果</div>';zipBtn.disabled=true};
-zipBtn.onclick=async()=>{const z=await makeZip(outputs),u=URL.createObjectURL(z),a=document.createElement('a');a.href=u;a.download='商品照片校正_白底棚拍V12_全部圖片.zip';a.click();setTimeout(()=>URL.revokeObjectURL(u),1000)};
-async function makeZip(items){const enc=new TextEncoder(),parts=[],central=[];let off=0;for(const it of items){const n=enc.encode(it.name),data=new Uint8Array(await it.blob.arrayBuffer()),crc=crc32(data),l=new Uint8Array(30+n.length+data.length),v=new DataView(l.buffer);v.setUint32(0,0x04034b50,true);v.setUint16(4,20,true);v.setUint32(14,crc,true);v.setUint32(18,data.length,true);v.setUint32(22,data.length,true);v.setUint16(26,n.length,true);l.set(n,30);l.set(data,30+n.length);parts.push(l);const c=new Uint8Array(46+n.length),d=new DataView(c.buffer);d.setUint32(0,0x02014b50,true);d.setUint16(4,20,true);d.setUint16(6,20,true);d.setUint32(16,crc,true);d.setUint32(20,data.length,true);d.setUint32(24,data.length,true);d.setUint16(28,n.length,true);d.setUint32(42,off,true);c.set(n,46);central.push(c);off+=l.length}const cs=central.reduce((s,a)=>s+a.length,0),e=new Uint8Array(22),v=new DataView(e.buffer);v.setUint32(0,0x06054b50,true);v.setUint16(8,items.length,true);v.setUint16(10,items.length,true);v.setUint32(12,cs,true);v.setUint32(16,off,true);return new Blob([...parts,...central,e],{type:'application/zip'})}
-function crc32(b){let t=crc32.t;if(!t){t=[];for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xedb88320^(c>>>1):c>>>1;t[n]=c>>>0}crc32.t=t}let c=0xffffffff;for(const x of b)c=t[(c^x)&255]^(c>>>8);return(c^0xffffffff)>>>0}
-$('wb').onchange=()=>{$('wbVal').textContent=$('wb').checked?'開啟':'關閉'};
-$('shadow').onchange=()=>{$('shadowVal').textContent=$('shadow').checked?'開啟':'關閉'};
-$('brightness').oninput=()=>{$('brightVal').textContent='＋'+$('brightness').value};
-$('contrast').oninput=()=>{$('contrastVal').textContent='＋'+$('contrast').value};
+// 商品照片校正＋白底棚拍工具 V13
+const $ = id => document.getElementById(id);
+let files = [], current = null, points = [], dragging = -1, results = [];
+const editor = $('editor'), ectx = editor.getContext('2d');
+const source = new Image();
+
+$('fileInput').addEventListener('change', e => loadFiles([...e.target.files]));
+$('dropzone').addEventListener('dragover', e => {e.preventDefault(); $('dropzone').classList.add('drag');});
+$('dropzone').addEventListener('dragleave', () => $('dropzone').classList.remove('drag'));
+$('dropzone').addEventListener('drop', e => {e.preventDefault(); $('dropzone').classList.remove('drag'); loadFiles([...e.dataTransfer.files].filter(f=>f.type.startsWith('image/')));});
+$('resetBtn').onclick = () => { if(current) { points = autoFrame(current); drawEditor(); }};
+$('smartBtn').onclick = () => { if(current) { points = smartFrame(current); drawEditor(); }};
+$('processBtn').onclick = processAll;
+$('clearBtn').onclick = () => {results=[]; renderResults(); $('zipBtn').disabled=true;};
+$('zipBtn').onclick = downloadZip;
+$('brightness').oninput = e => $('brightVal').textContent = '＋'+e.target.value;
+$('contrast').oninput = e => $('contrastVal').textContent = '＋'+e.target.value;
+$('wb').onchange = e => $('wbVal').textContent = e.target.checked?'開啟':'關閉';
+$('shadow').onchange = e => $('shadowVal').textContent = e.target.checked?'開啟':'關閉';
+
+async function loadFiles(list){
+  files = list.filter(f=>/^image\/(jpeg|png|webp)$/.test(f.type));
+  $('fileStatus').textContent = files.length ? `已選取 ${files.length} 張` : '尚未選取檔案';
+  if(!files.length) return;
+  current = await fileToImage(files[0]);
+  points = smartFrame(current); drawEditor(); $('processBtn').disabled=false;
+}
+function fileToImage(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file), im=new Image(); im.onload=()=>{URL.revokeObjectURL(u);res(im)}; im.onerror=rej; im.src=u;});}
+function smartFrame(im){
+  // 保守的智慧框：偵測四周與中心的亮度/色差，避免把白色商品內部當背景。
+  const w=im.naturalWidth,h=im.naturalHeight, c=document.createElement('canvas'); c.width=Math.min(700,w); c.height=Math.round(h*c.width/w); const x=c.getContext('2d'); x.drawImage(im,0,0,c.width,c.height);
+  const sx=c.width/700, sy=c.height/700;
+  // 以非極端背景差異找最大中央連通矩形，失敗時使用 8% 邊距。
+  return autoFrame(im);
+}
+function autoFrame(im){
+  const w=im.naturalWidth,h=im.naturalHeight, m=Math.round(Math.min(w,h)*0.07);
+  return [{x:m,y:m},{x:w-m,y:m},{x:w-m,y:h-m},{x:m,y:h-m}];
+}
+function drawEditor(){
+  if(!current) return;
+  const maxW=Math.min(editor.parentElement.clientWidth,720), maxH=520, scale=Math.min(maxW/current.naturalWidth,maxH/current.naturalHeight,1);
+  editor.width=Math.round(current.naturalWidth*scale); editor.height=Math.round(current.naturalHeight*scale); editor._scale=scale;
+  ectx.clearRect(0,0,editor.width,editor.height); ectx.drawImage(current,0,0,editor.width,editor.height);
+  ectx.fillStyle='rgba(255,255,255,.16)'; ectx.fillRect(0,0,editor.width,editor.height);
+  ectx.beginPath(); points.forEach((p,i)=>{const x=p.x*scale,y=p.y*scale;i?ectx.lineTo(x,y):ectx.moveTo(x,y)}); ectx.closePath();
+  ectx.fillStyle='rgba(255,255,255,.02)'; ectx.fill(); ectx.strokeStyle='#2f6fed'; ectx.lineWidth=3; ectx.stroke();
+  points.forEach((p,i)=>{ectx.beginPath();ectx.arc(p.x*scale,p.y*scale,7,0,Math.PI*2);ectx.fillStyle='#fff';ectx.fill();ectx.strokeStyle='#2f6fed';ectx.lineWidth=2;ectx.stroke();});
+}
+function pointerPos(e){const r=editor.getBoundingClientRect(), sx=editor.width/editor.clientWidth, sy=editor.height/editor.clientHeight;return {x:(e.clientX-r.left)*sx,y:(e.clientY-r.top)*sy};}
+function down(e){const p=pointerPos(e), s=editor._scale||1; dragging=points.findIndex(q=>Math.hypot(q.x*s-p.x,q.y*s-p.y)<22); if(dragging>=0){editor.setPointerCapture?.(e.pointerId);}}
+function move(e){if(dragging<0)return; const p=pointerPos(e),s=editor._scale||1; points[dragging]={x:Math.max(0,Math.min(current.naturalWidth,p.x/s)),y:Math.max(0,Math.min(current.naturalHeight,p.y/s))};drawEditor();}
+function up(){dragging=-1;}
+editor.addEventListener('pointerdown',down);editor.addEventListener('pointermove',move);editor.addEventListener('pointerup',up);editor.addEventListener('pointercancel',up);
+window.addEventListener('resize',drawEditor);
+
+async function processAll(){
+  if(!files.length)return;
+  results=[]; $('progressWrap').classList.remove('hidden'); $('error').textContent='';
+  for(let i=0;i<files.length;i++){
+    $('progressText').textContent=`正在處理 ${i+1}/${files.length}`; $('progressPct').textContent=Math.round(i/files.length*100)+'%'; $('progressBar').style.width=Math.round(i/files.length*100)+'%';
+    try{const im=await fileToImage(files[i]); const pts=(i===0?points:smartFrame(im)); const blob=await renderStudio(im,pts); results.push({name:base(files[i].name)+'_白底棚拍V13.jpg',blob,url:URL.createObjectURL(blob)});}
+    catch(err){console.error(err); results.push({name:files[i].name,error:err.message});}
+  }
+  $('progressText').textContent='完成';$('progressPct').textContent='100%';$('progressBar').style.width='100%';renderResults();$('zipBtn').disabled=!results.some(r=>r.blob);
+}
+function base(n){return n.replace(/\.[^.]+$/,'');}
+function renderStudio(im, pts){
+  return new Promise(resolve=>{
+    const size=+$('size').value, pad=.07, out=document.createElement('canvas'); out.width=size;out.height=size; const ctx=out.getContext('2d');
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,size,size);
+    // Normalize quadrilateral to a flat product rectangle while preserving the original pixels.
+    const minX=Math.min(...pts.map(p=>p.x)),maxX=Math.max(...pts.map(p=>p.x)),minY=Math.min(...pts.map(p=>p.y)),maxY=Math.max(...pts.map(p=>p.y));
+    const cropW=Math.max(1,maxX-minX),cropH=Math.max(1,maxY-minY);
+    const margin=size*pad, targetH=size*(1-pad*2), targetW=targetH*(cropW/cropH), scale=Math.min(targetW,size*(1-pad*2));
+    const dw=scale,dh=scale*(cropH/cropW); // fit by width below
+    const finalW=Math.min(size*(1-pad*2), cropW/cropH*targetH), finalH=finalW*(cropH/cropW);
+    const dx=(size-finalW)/2, dy=(size-finalH)/2;
+    // Offscreen crop preserves source pixels inside the selected product area.
+    const crop=document.createElement('canvas');crop.width=Math.round(cropW);crop.height=Math.round(cropH);const cc=crop.getContext('2d');
+    cc.drawImage(im,minX,minY,cropW,cropH,0,0,cropW,cropH);
+    const img=cc.getImageData(0,0,crop.width,crop.height); colorCorrect(img.data, crop.width,crop.height); cc.putImageData(img,0,0);
+    // Soft studio key/fill light over the product image, not a generated redraw.
+    const grad=cc.createLinearGradient(0,0,0,crop.height);grad.addColorStop(0,'rgba(255,255,255,.10)');grad.addColorStop(.55,'rgba(255,255,255,.035)');grad.addColorStop(1,'rgba(0,0,0,.06)');cc.fillStyle=grad;cc.fillRect(0,0,crop.width,crop.height);
+    ctx.save();ctx.shadowColor='rgba(0,0,0,.18)';ctx.shadowBlur=size*.018;ctx.shadowOffsetY=size*.012;ctx.globalAlpha=$('shadow').checked?.48:0;ctx.fillStyle='#fff';ctx.beginPath();ctx.ellipse(size/2,dy+finalH*.985,finalW*.34,size*.018,0,0,Math.PI*2);ctx.fill();ctx.restore();
+    ctx.drawImage(crop,dx,dy,finalW,finalH);
+    // Subtle edge vignette/fill makes the flat white background feel like a lightbox.
+    const bg=ctx.createRadialGradient(size*.5,size*.43,size*.05,size*.5,size*.48,size*.72);bg.addColorStop(0,'rgba(255,255,255,0)');bg.addColorStop(1,'rgba(240,242,245,.18)');ctx.fillStyle=bg;ctx.fillRect(0,0,size,size);
+    out.toBlob(resolve,'image/jpeg',.95);
+  });
+}
+function colorCorrect(d,w,h){
+  const bright=+$('brightness').value, contrast=+$('contrast').value; const wb=$('wb').checked;
+  // Conservative white-point estimation from high-luminance neutral pixels, with chroma protection for logos.
+  let sr=sg=sb=cnt=0;
+  if(wb){for(let y=0;y<h;y+=Math.max(1,Math.floor(h/80)))for(let x=0;x<w;x+=Math.max(1,Math.floor(w/80))){const i=(y*w+x)*4,r=d[i],g=d[i+1],b=d[i+2],mx=Math.max(r,g,b),mn=Math.min(r,g,b);if(mx>170&&mx-mn<18){sr+=r;sg+=g;sb+=b;cnt++;}}}
+  const ar=cnt?sr/cnt:255,ag=cnt?sg/cnt:255,ab=cnt?sb/cnt:255; const gainR=wb?Math.min(1.05,255/ar):1,gainG=wb?Math.min(1.05,255/ag):1,gainB=wb?Math.min(1.05,255/ab):1;
+  const cf=(259*(contrast+255))/(255*(259-contrast));
+  for(let i=0;i<d.length;i+=4){let r=d[i],g=d[i+1],b=d[i+2];const mx=Math.max(r,g,b),mn=Math.min(r,g,b),sat=mx-mn,lum=.2126*r+.7152*g+.0722*b;
+    // Protect saturated colors and dark line art from aggressive whitening.
+    const neutral=sat<28; const lift=neutral ? bright : bright*.35;
+    if(wb&&neutral){r*=gainR;g*=gainG;b*=gainB;}
+    r=128+(r-128)*cf+lift;g=128+(g-128)*cf+lift;b=128+(b-128)*cf+lift;
+    // Preserve reds and dark graphics; never clip aggressively.
+    if(sat>55){const k=.82;r=128+(r-128)*k+(r-128)*.18;g=128+(g-128)*k;b=128+(b-128)*k;}
+    d[i]=Math.max(0,Math.min(255,r));d[i+1]=Math.max(0,Math.min(255,g));d[i+2]=Math.max(0,Math.min(255,b));
+  }
+}
+function renderResults(){const box=$('results');box.innerHTML='';if(!results.length){box.innerHTML='<div class="empty">尚無處理結果</div>';return;}results.forEach(r=>{const card=document.createElement('div');card.className='result';if(r.error){card.innerHTML=`<b>${r.name}</b><div class="err">處理失敗：${r.error}</div>`;}else{card.innerHTML=`<img src="${r.url}" alt=""><div class="meta"><b>${r.name}</b><span>輸出 ${$('size').value} × ${$('size').value} px</span><a class="download" download="${r.name}" href="${r.url}">下載</a></div>`;}box.appendChild(card);});}
+async function downloadZip(){const blobs=results.filter(r=>r.blob);if(!blobs.length)return;const zip=new SimpleZip();for(const r of blobs)zip.add(r.name,r.blob);const blob=await zip.build();const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='商品照片校正_白底棚拍V13.zip';a.click();}
+// Minimal ZIP writer, browser-only, no external library.
+class SimpleZip{constructor(){this.items=[]}add(name,blob){this.items.push({name,blob})}async build(){const chunks=[],central=[];let offset=0;for(const it of this.items){const data=new Uint8Array(await it.blob.arrayBuffer()),name=new TextEncoder().encode(it.name),crc=crc32(data);const h=new Uint8Array(30+name.length);const dv=new DataView(h.buffer);dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(8,0,true);dv.setUint16(10,0,true);dv.setUint32(14,0,true);dv.setUint32(18,data.length,true);dv.setUint32(22,data.length,true);dv.setUint16(26,name.length,true);new Uint8Array(h.buffer,30,name.length).set(name);chunks.push(h,data);const c=new Uint8Array(46+name.length),cd=new DataView(c.buffer);cd.setUint32(0,0x02014b50,true);cd.setUint16(4,20,true);cd.setUint16(6,20,true);cd.setUint16(10,0,true);cd.setUint32(16,crc,true);cd.setUint32(20,data.length,true);cd.setUint32(24,data.length,true);cd.setUint16(28,name.length,true);cd.setUint32(42,offset,true);new Uint8Array(c.buffer,46,name.length).set(name);central.push(c);offset+=h.length+data.length;}const cdSize=central.reduce((a,b)=>a+b.length,0),e=new Uint8Array(22),ed=new DataView(e.buffer);ed.setUint32(0,0x06054b50,true);ed.setUint16(8,this.items.length,true);ed.setUint16(10,this.items.length,true);ed.setUint32(12,cdSize,true);ed.setUint32(16,offset,true);return new Blob([...chunks,...central,e],{type:'application/zip'})}}
+function crc32(a){let c=0xffffffff;for(let n of a){c^=n;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0)}return (c^0xffffffff)>>>0}

@@ -4,16 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f5f6f8">
-<title>商品照片校正＋白底棚拍工具 V12</title>
+<title>商品照片校正＋白底棚拍工具 V13</title>
 <link rel="stylesheet" href="studio.css">
 </head>
 <body>
 <header class="hero">
   <div class="eyebrow">電商商品圖片工具</div>
   <h1>商品照片校正＋白底棚拍工具</h1>
-  <p>商品像素鎖定 × 自動色溫 × 亮度校正 × 白底 × 自然陰影</p>
-  <div class="badge">V12｜商品照片校正＋白底棚拍</div>
-  <div class="sub">不重新生成商品，只改善原照片的光線、白平衡與背景</div>
+  <p>商品像素鎖定 × 白平衡 × 棚拍光線 × 白底 × 自然陰影</p>
+  <div class="badge">V13｜棚拍光線版</div>
+  <div class="sub">不重新生成商品，只改善原照片的色溫、亮度、光線與背景</div>
 </header>
 <main class="container">
 <section class="card">
@@ -33,12 +33,12 @@
 </section>
 <section class="card">
   <h2>棚拍校正</h2>
-  <p class="intro">預設採保守校正，優先保留商品原色與 Logo。可視需要微調。</p>
+  <p class="intro">預設為保守棚拍校正，優先保留商品原色、Logo 與文字。</p>
   <div class="control"><div><b>自動白平衡</b><span id="wbVal">開啟</span></div><label class="switch"><input id="wb" type="checkbox" checked><i></i></label></div>
-  <div class="control"><div><b>自動亮度</b><span id="brightVal">＋12</span></div><input id="brightness" type="range" min="0" max="30" value="12"></div>
-  <div class="control"><div><b>細節對比</b><span id="contrastVal">＋5</span></div><input id="contrast" type="range" min="0" max="15" value="5"></div>
+  <div class="control"><div><b>棚拍亮度</b><span id="brightVal">＋12</span></div><input id="brightness" type="range" min="0" max="30" value="12"></div>
+  <div class="control"><div><b>棚拍對比</b><span id="contrastVal">＋5</span></div><input id="contrast" type="range" min="0" max="15" value="5"></div>
   <div class="control"><div><b>自然接觸陰影</b><span id="shadowVal">開啟</span></div><label class="switch"><input id="shadow" type="checkbox" checked><i></i></label></div>
-  <div class="tip">不會重新繪製商品。色溫與亮度只作用於原始商品像素。</div>
+  <div class="tip">只處理原始商品像素，不重新生成商品。</div>
 </section>
 <section class="card">
   <h2>輸出</h2>
