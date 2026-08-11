@@ -3,17 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#f5f6f8">
-<title>商品照片校正＋白底棚拍工具 V13</title>
+<meta name="theme-color" content="#f4f5f7">
+<title>商品照片校正＋白底棚拍工具 V14</title>
 <link rel="stylesheet" href="studio.css">
 </head>
 <body>
 <header class="hero">
   <div class="eyebrow">電商商品圖片工具</div>
   <h1>商品照片校正＋白底棚拍工具</h1>
-  <p>商品像素鎖定 × 白平衡 × 棚拍光線 × 白底 × 自然陰影</p>
-  <div class="badge">V13｜棚拍光線版</div>
-  <div class="sub">不重新生成商品，只改善原照片的色溫、亮度、光線與背景</div>
+  <p>商品像素鎖定 × 均勻光線 × 白底 × 自然陰影</p>
+  <div class="badge">V14｜棚拍均光版</div>
+  <div class="sub">保留原商品，不重新生成；改善色溫、曝光與盒面光線不均</div>
 </header>
 <main class="container">
 <section class="card">
@@ -26,19 +26,20 @@
 </section>
 <section class="card" id="selectCard">
   <h2>商品範圍</h2>
-  <p class="intro">只框住完整商品。框內像素鎖定，不做去背；框外背景會變成純白。</p>
+  <p class="intro">只框住完整商品，處理時保留框內原始像素；框外改為純白。</p>
   <div class="editor-wrap"><canvas id="editor"></canvas></div>
   <div class="action-grid"><button class="primary small" id="smartBtn">智慧框選</button><button class="secondary small" id="resetBtn">重新框選</button></div>
-  <div class="tip">拖曳四個角貼近商品外框，不需要沿邊緣逐點描繪。</div>
+  <div class="tip">白色盒裝商品建議框住整個外盒，不必沿著商品內部線條描邊。</div>
 </section>
 <section class="card">
-  <h2>棚拍校正</h2>
-  <p class="intro">預設為保守棚拍校正，優先保留商品原色、Logo 與文字。</p>
+  <h2>棚拍光線</h2>
+  <p class="intro">V14 重點：先均勻盒面光線，再加入很輕的棚拍立體光，不靠重新生成商品。</p>
   <div class="control"><div><b>自動白平衡</b><span id="wbVal">開啟</span></div><label class="switch"><input id="wb" type="checkbox" checked><i></i></label></div>
-  <div class="control"><div><b>棚拍亮度</b><span id="brightVal">＋12</span></div><input id="brightness" type="range" min="0" max="30" value="12"></div>
-  <div class="control"><div><b>棚拍對比</b><span id="contrastVal">＋5</span></div><input id="contrast" type="range" min="0" max="15" value="5"></div>
+  <div class="control"><div><b>曝光校正</b><span id="brightVal">＋10</span></div><input id="brightness" type="range" min="0" max="24" value="10"></div>
+  <div class="control"><div><b>光線均勻度</b><span id="uniformVal">72%</span></div><input id="uniform" type="range" min="0" max="100" value="72"></div>
+  <div class="control"><div><b>棚拍柔光</b><span id="keyVal">18%</span></div><input id="key" type="range" min="0" max="40" value="18"></div>
   <div class="control"><div><b>自然接觸陰影</b><span id="shadowVal">開啟</span></div><label class="switch"><input id="shadow" type="checkbox" checked><i></i></label></div>
-  <div class="tip">只處理原始商品像素，不重新生成商品。</div>
+  <div class="tip">「光線均勻度」專門修正盒面左暗右亮、局部過亮等問題；數值過高會讓立體感變平。</div>
 </section>
 <section class="card">
   <h2>輸出</h2>
